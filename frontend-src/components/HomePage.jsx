@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import classNames from 'classnames'
 
 import TweetList from 'components/TweetList.jsx'
+import Title from 'components/Title.jsx'
 
 const tweetRegex = /^(?:(?:https?:\/\/)?(?:www\.)?twitter\.com\/[a-zA-Z0-9_]{1,15}\/status\/)?([0-9]{1,24})/
 
@@ -128,6 +129,7 @@ export default class MainPage extends React.PureComponent {
 
 	render() {
 		return <div className="container" id="homepage">
+			<Title>Bobbin</Title>
 			<div className="row">
 				<div className="col text-center">
 					<h2>Share threads with <strong>Bobbin</strong></h2>

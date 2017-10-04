@@ -2,6 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 
 import TweetList from 'components/TweetList.jsx'
+import Title from 'components/Title.jsx'
 
 export default class ThreadPage extends React.PureComponent {
 	static propTypes = {
@@ -39,11 +40,6 @@ export default class ThreadPage extends React.PureComponent {
 	render() {
 		const {threadTweetIds, author, fullyRendered} = this.state
 
-		document.title =
-			author ? `Thread by @${author.handle}` :
-			threadTweetIds ? "Conversation" :
-			"Thread"
-
 		const header = author ?
 			<h3 className="author-header">Thread by <a
 				href={`https://twitter.com/${author.handle}`}
@@ -62,6 +58,11 @@ export default class ThreadPage extends React.PureComponent {
 		}
 
 		return <div className="container">
+			<Title>{
+				author ? `Thread by @${author.handle}` :
+				threadTweetIds ? "Conversation" :
+				"Thread"
+			}</Title>
 			<div className="row">
 				<div className="col text-center">
 					{header}

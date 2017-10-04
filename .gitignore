@@ -105,4 +105,5 @@ ENV/
 *.sublime-workspace
 *.sublime-project
 secrets
+node_modules
 

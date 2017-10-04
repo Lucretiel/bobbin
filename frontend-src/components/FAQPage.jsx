@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 
 import _ from 'lodash'
 
+import Title from 'components/Title.jsx'
 
 const entries = [{
 	question: "What is this?",
@@ -36,6 +37,7 @@ const entries = [{
 export default class FaqPage extends React.PureComponent {
 	render() {
 		return <div className="container" id="faq">
+			<Title>Bobbin FAQ</Title>
 			<div className="row">
 				<div className="col text-center">
 					<h2>Frequently Asked Questions</h2>
@@ -44,8 +46,8 @@ export default class FaqPage extends React.PureComponent {
 			<div className="row justify-content-center">
 				<div className="col col-lg-8 col-md-10">
 					<dl>{
-						_.map(entries, ({question, answer}) =>
-							<div className="faq-item">
+						_.map(entries, ({question, answer}, index) =>
+							<div className="faq-item" key={index}>
 								<dt className="faq-question">{question}</dt>
 								<dd className="faq-answer">{answer}</dd>
 							</div>

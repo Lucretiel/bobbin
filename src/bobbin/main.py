@@ -39,14 +39,25 @@ def walk_dir(path):
 			yield from walk_dir(child)
 
 
+def parse_size(size):
+	if size.endswith("KB"):
+		return int(size[:-2]) * 1024
+	elif size.endswith("MB"):
+		return int(size[:-2]) * 1024 * 1024
+	elif size.endswith("GB"):
+		return int(size[:-2]) * 1024 * 1024 * 1024
+	else:
+		return int(size)
+
+
 @autocommand(__name__, loop=True, pass_loop=True)
 async def main(
 	key: str =os.environ.get("CONSUMER_KEY", None),
 	secret: str =os.environ.get("CONSUMER_SECRET", None),
-	cache="./cache.shelf",
 	host="0.0.0.0",
 	port=8080,
 	static_dir=pathlib.Path('./static'),
+	cache_size="256MB",
 	loop=None,
 ):
 	if key is None:
@@ -59,7 +70,7 @@ async def main(
 	if not static_dir.is_dir():
 		return "--static_dir must be a directory"
 
-	cache = AsyncLRUCache(max_size=1024 * 1024 * 256)
+	cache = AsyncLRUCache(max_size=parse_size(cache_size))
 
 	with aiohttp.ClientSession() as session:
 		token = twitter.Token(session, key, secret)
