@@ -37,9 +37,13 @@ WEBPACK_FLAGS =
 
 endif
 
+$(WEBPACK_OUTPUT_DIR):
+	mkdir $(WEBPACK_OUTPUT_DIR)
+
 $(BUNDLEJS): $(SRC_FILES) \
 	webpack.config.js \
-	node_modules
+	node_modules \
+	$(WEBPACK_OUTPUT_DIR)
 
 	env NODE_ENV=$(ENV) $(WEBPACK) --progress $(WEBPACK_FLAGS) --output-path $(WEBPACK_OUTPUT_DIR)
 
