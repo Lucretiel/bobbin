@@ -1,0 +1,39 @@
+{
+  "name": "bobbin",
+  "version": "1.0.0",
+  "repository": "https://github.com/Lucretiel/bobbin.git",
+  "author": "Nathan West <Lucretiel@gmail.com>",
+  "scripts": {
+    "build": "env NODE_ENV=development webpack --progress",
+    "build-dev": "env NODE_ENV=development webpack -d --progress",
+    "build-prod": "env NODE_ENV=production webpack -p --progress",
+    "web-serve": "env NODE_ENV=development webpack-dev-server --progress",
+    "web-serve-dev": "env NODE_ENV=development webpack-dev-server --progress -d",
+    "web-serve-prod": "env NODE_ENV=production webpack-dev-server --progress -p",
+    "heroku-postbuild": "make -j all sizes"
+  },
+  "dependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-plugin-lodash": "^3.2.11",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-preset-env": "^1.6.0",
+    "babel-preset-react": "^6.24.1",
+    "bootstrap": "^4.0.0-beta",
+    "classnames": "^2.2.5",
+    "css-loader": "^0.28.7",
+    "immutable": "^3.8.1",
+    "jquery": "^3.2.1",
+    "lodash": "^4.17.4",
+    "node-sass": "^4.5.3",
+    "popper.js": "^1.12.5",
+    "prop-types": "^15.6.0",
+    "react": "^16.0.0",
+    "react-dom": "^16.0.0",
+    "react-router-dom": "^4.2.2",
+    "sass-loader": "^6.0.6",
+    "style-loader": "^0.18.2",
+    "webpack": "^3.6.0",
+    "webpack-dev-server": "^2.8.2"
+  }
+}

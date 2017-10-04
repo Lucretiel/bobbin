@@ -104,4 +104,5 @@ ENV/
 .DS_Store
 *.sublime-workspace
 *.sublime-project
+secrets
 
