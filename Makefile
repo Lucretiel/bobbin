@@ -18,7 +18,7 @@ zopfli: $(BUNDLEGZ)
 brotli: $(BUNDLEBR)
 gzip: zopfli
 
-sizes:
+sizes: all
 	ls -lh $(WEBPACK_OUTPUT_DIR)
 
 compressed: zopfli brotli

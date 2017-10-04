@@ -1,1 +1,1 @@
-web: python3 -m bobbin.main
+web: python3 -m bobbin.main -S static
