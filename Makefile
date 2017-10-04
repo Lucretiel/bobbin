@@ -39,8 +39,7 @@ endif
 
 $(BUNDLEJS): $(SRC_FILES) \
 	webpack.config.js \
-	node_modules \
-	$(WEBPACK_OUTPUT_DIR)
+	node_modules
 
 	env NODE_ENV=$(ENV) $(WEBPACK) --progress $(WEBPACK_FLAGS) --output-path $(WEBPACK_OUTPUT_DIR)
 
