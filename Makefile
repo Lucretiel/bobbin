@@ -46,7 +46,7 @@ $(BUNDLEJS): $(SRC_FILES) \
 	$(WEBPACK_OUTPUT_DIR)
 
 	env NODE_ENV=$(ENV) $(WEBPACK) --progress $(WEBPACK_FLAGS) --output-path $(WEBPACK_OUTPUT_DIR)
-	ls -lah static
+	ls -lah static static/dist
 
 $(BUNDLEBR): $(BUNDLEJS)
 	$(BROTLI) < $(BUNDLEJS) > $(BUNDLEBR)
