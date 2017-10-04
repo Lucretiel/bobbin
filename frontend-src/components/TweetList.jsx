@@ -21,7 +21,7 @@ export default class TweetList extends React.PureComponent {
 	constructor(props) {
 		super(props)
 
-		this.runner = promiseRunner(8)
+		this.runner = promiseRunner(4)
 		this.loadingTask = Promise.resolve()
 		this.cancelled = false
 		this.cancelTask = new Promise((resolve, reject) => {
