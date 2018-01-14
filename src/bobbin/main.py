@@ -46,6 +46,8 @@ def parse_size(size):
 		return int(size[:-2]) * 1024 * 1024
 	elif size.endswith("GB"):
 		return int(size[:-2]) * 1024 * 1024 * 1024
+	elif size.endswith("B"):
+		return int(size[:-1])
 	else:
 		return int(size)
 

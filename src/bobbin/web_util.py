@@ -24,7 +24,7 @@ def with_context(handler=None, **context):
 
 	@functools.wraps(handler)
 	def context_handler(request, **kwargs):
-		return handler(request, **context, **kwargs)
+		return handler(request, **kwargs, **context)
 	return context_handler
 
 
@@ -78,7 +78,7 @@ QueryParam = object()
 
 class QueryError(enum.Enum):
 	unexpected = 0
-	extra = 1
+	duplicate = 1
 	missing = 2
 
 
@@ -86,7 +86,13 @@ def with_query(error_handler=None, handler=None, ignore_unexpected=False):
 	'''
 	Inject all the query fields as handler context. To prevent accidentally
 	leaking implementation info to users of the API, handler parameters
-	associated with the query must be annotated with QueryParam.
+	associated with the query must be annotated with QueryParam:
+
+	@with_query()
+	def handler(request, query1: QueryParam)
+
+	error_handler is called with (kind, key) in the event of an error. Errors
+	include missing keys, duplicate keys, and unexpected keys.
 	'''
 	if handler is None:
 		return lambda handler: with_query(error_handler, handler)
@@ -117,7 +123,7 @@ def with_query(error_handler=None, handler=None, ignore_unexpected=False):
 				if not ignore_unexpected:
 					return error_handler(QueryError.unexpected, key)
 			elif key in bound_query_params:
-				return error_handler(QueryError.extra, key)
+				return error_handler(QueryError.duplicate, key)
 			else:
 				bound_query_params[key] = value
 				required.discard(key)
@@ -131,7 +137,7 @@ def with_query(error_handler=None, handler=None, ignore_unexpected=False):
 
 
 def query_error_handler_json(kind: QueryError, key: str):
-	if kind is QueryError.extra:
+	if kind is QueryError.duplicate:
 		msg = f"unexpected duplicate query parameter: {key}"
 	elif kind is QueryError.missing:
 		msg = f"missing required query parameter: {key}"
@@ -144,6 +150,12 @@ def query_error_handler_json(kind: QueryError, key: str):
 
 
 def compose_handlers(handlers, IgnoredError, error_factory=None):
+	'''
+	Given a list of web handlers, create a new one which tries each on in
+	sequence. Each time a handler raises an Exception matching IgnoredError,
+	the next handler is tried. If none of them succeed, error_facrotr() is
+	raised, defaulting to IgnoredError.
+	'''
 	if error_factory is None:
 		error_factory = IgnoredError
 
@@ -169,7 +181,7 @@ def method_handler(*methods, inject=False, handler=None):
 
 	@functools.wraps(handler)
 	def method_handler_wrapper(request, **kwargs):
-		method = request.method
+		method = request.method.upper()
 		if method not in methods:
 			raise web.HTTPMethodNotAllowed(method=method, allowed_methods=methods)
 
@@ -184,7 +196,7 @@ def method_handler(*methods, inject=False, handler=None):
 def _flatten_methods(methods):
 	for method in methods:
 		if isinstance(method, str):
-			yield method
+			yield from method.split()
 		else:
 			yield from _flatten_methods(method)
 
@@ -206,8 +218,8 @@ def methods(*targets, inject=False):
 
 
 class RouteNotFound(web.HTTPNotFound):
-	def __init__(self):
-		super().__init__(body=b'')
+	def __init__(self, body=b''):
+		super().__init__(body=body)
 
 
 def _make_route_handler(url, handler):
