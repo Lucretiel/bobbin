@@ -5,7 +5,7 @@ import classNames from 'classnames'
 import TweetList from 'components/TweetList.jsx'
 import Title from 'components/Title.jsx'
 
-const tweetRegex = /^(?:(?:https?:\/\/)?(?:(?:www|mobile)\.)?twitter\.com\/[a-zA-Z0-9_]{1,15}\/status\/)?([0-9]{1,24})(?:[?#].*)?$/
+const tweetRegex = /^\s*(?:(?:https?:\/\/)?(?:(?:www|mobile)\.)?twitter\.com\/[a-zA-Z0-9_]{1,15}\/status\/)?([0-9]{1,24})(?:[?#]\S*)?\s*$/
 
 const getTweetId = tweetLink => {
 	const match = tweetRegex.exec(tweetLink)
