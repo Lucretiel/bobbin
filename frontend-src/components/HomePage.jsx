@@ -90,24 +90,24 @@ class TweetEntryForm extends React.PureComponent {
 				<div className="col-auto">
 					<div className="form-group">
 						<button
-							type="submit"
-							className={submitClass}
-							onClick={this.submitId}
-							disabled={!isValid}
-						>
-							Submit
-						</button>
-					</div>
-				</div>
-				<div className="col-auto">
-					<div className="form-group">
-						<button
 							type="button"
 							className="btn btn-info"
 							data-toggle="collapse"
 							data-target="#submit-help-block"
 						>
 							Help
+						</button>
+					</div>
+				</div>
+				<div className="col-auto">
+					<div className="form-group">
+						<button
+							type="submit"
+							className={submitClass}
+							onClick={this.submitId}
+							disabled={!isValid}
+						>
+							Submit
 						</button>
 					</div>
 				</div>
