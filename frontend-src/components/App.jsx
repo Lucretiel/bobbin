@@ -16,7 +16,7 @@ export default class App extends React.PureComponent {
 							<span className="navbar-toggler-icon"></span>
 						</button>
 						<div className="collapse navbar-collapse" id="navbar-links">
-							{/*<Link className="nav-item nav-link disabled" to="#">About</Link>*/}
+							{/*<Link className="nav-item nav-link disabled" to="#">About</Link>*/}n
 							<Link className="nav-item nav-link" to="/faq">FAQ</Link>
 						</div>
 					</div>

@@ -7,6 +7,14 @@ from json import dumps
 from aiohttp import web
 
 
+# This is what I'm using instead of a "real" web framework. I'm actually pretty
+# happy with it. Something to note, though: Even though all handlers are
+# technically coroutines, many of decorator wrappers here are plain functions,
+# and in fact many of them are *required* to be plain functions. Most of the
+# processing– including routing, method matching, and so on– check for raised
+# exceptions in the intial call, without any await calls.
+
+
 def dump_json(**kwargs):
 	return dumps(kwargs, check_circular=False, separators=(',', ':'))
 
@@ -71,6 +79,25 @@ def requires_context(*context_keys, handler=None):
 		return handler(request, **kwargs)
 
 	return requires_context_wrapper
+
+
+def convert_context(handler=None, **rename_keys):
+	'''
+	Renamed context keys for the wrapped handler. It is left unspecified what
+	happens to conflicting keys.
+	'''
+
+	# TODO: ensure that this conversion is the same size as the original
+	rename_keys = {input_key: output_key for output_key, input_key in rename_keys.items()}
+
+	@functools.wraps(handler)
+	def convert_context_wrapper(request, **kwargs):
+		return handler(request, **{
+			(rename_keys.get(key, key)): value
+			for key, value in kwargs.items
+		})
+
+	return convert_context_wrapper
 
 
 QueryParam = object()

@@ -11,7 +11,7 @@ module.exports = {
 		'style.scss',
 	],
 	output: {
-		path: dir("static/dist/"),
+		path: dir("dist/"),
 		filename: 'bundle.js',
 	},
 	resolve: {

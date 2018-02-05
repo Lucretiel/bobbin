@@ -6,7 +6,7 @@ from bobbin import web_util
 
 
 @web_util.final_route
-@web_util.route(r"/(?P<path>[a-zA-Z0-9._-]+(/[a-zA-Z0-9._-]+)*)$")
+@web_util.route(r"/(?P<path>[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*)$")
 @web_util.method_handler('GET', 'HEAD')
 async def static_file_handler(request, *, base_directory: pathlib.Path, path, valid_paths):
 	path = pathlib.Path(path)

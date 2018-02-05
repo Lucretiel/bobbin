@@ -8,7 +8,7 @@ import promiseRunner from 'promiseChain.jsx'
 
 const cancelError = new Error("Cancelled")
 
-const notCancelled = handler => result => result === cancelError ? result : handler(result)
+const ifNotCancelled = handler => result => result === cancelError ? result : handler(result)
 
 export default class TweetList extends React.PureComponent {
 	static propTypes = {
@@ -40,7 +40,7 @@ export default class TweetList extends React.PureComponent {
 			Promise.all([
 				// Undo the fullyRendered call from the previous completion, and
 				// suppress cancelation rejections from it.
-				this.loadingTask.then(notCancelled(result => this.props.fullyRendered(false))),
+				this.loadingTask.then(ifNotCancelled(result => this.props.fullyRendered(false))),
 
 				//TODO: find a way to cancel tweet loading elegantly
 				tweetLoadedPromise.catch(reason => {
@@ -48,7 +48,7 @@ export default class TweetList extends React.PureComponent {
 				}),
 			]),
 			this.cancelTask
-		]).then(notCancelled(result => this.props.fullyRendered(true)))
+		]).then(ifNotCancelled(result => this.props.fullyRendered(true)))
 	}
 
 	componentWillUnmount() {

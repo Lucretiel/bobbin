@@ -22,12 +22,23 @@ class AsyncLRUCache(async_cache.Cache):
 		self.cache[key] = value
 
 
+static_file_handler = web_util.convert_context(
+	frontend_server.static_file_handler,
+	base_directory='static_directory',
+)
+
+dist_file_handler = web_util.convert_context(
+	frontend_server.static_file_handler,
+	base_directory='dist_directory'
+)
+
 main_handler = web_util.routes(
 	(r'/$', frontend_server.index_handler, 'index_path'),
 	(r'/thread/[0-9]{1,21}/?$', frontend_server.index_handler, 'index_path'),
 	(r'/faq/?$', frontend_server.index_handler, 'index_path'),
 	(r'/api/', api_server.handler, 'get_thread'),
-	(r'/static/', frontend_server.static_file_handler, ['base_directory', 'valid_paths']),
+	(r'/static/', static_file_handler, ["statics_directory", "valid_paths"]),
+	(r'/dist/', dist_file_handler, ["dist_directory", "valid_paths"]),
 )
 
 
@@ -59,6 +70,7 @@ async def main(
 	host="0.0.0.0",
 	port=8080,
 	static_dir=pathlib.Path('./static'),
+	dist_dir=pathlib.Path('./dist'),
 	cache_size="256MB",
 	loop=None,
 ):
@@ -86,7 +98,8 @@ async def main(
 		handler = web_util.with_context(
 			web_util.shitty_logging(main_handler),
 			get_thread=get_thread,
-			base_directory=static_dir,
+			static_directory=static_dir,
+			dist_directory=dist_dir,
 			valid_paths=None,
 			index_path=static_dir / 'index.html'
 		)
