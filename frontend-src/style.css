@@ -60,13 +60,15 @@ header, nav, footer {
 	color: #212529;
 }
 
-.thread-end {
-    margin-left: auto;
-    margin-right: auto;
-
+.tweet-like {
     /* Copied from the tweet style */
     max-width: 500px;
     min-width: 220px;
+}
+
+.thread-end {
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /************************************************/

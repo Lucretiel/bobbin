@@ -26,6 +26,8 @@ class TweetEntryForm extends React.PureComponent {
 		}
 	}
 
+
+
 	setLink = event => this.setState({
 		tweetLink: event.target.value,
 		tweetId: getTweetId(event.target.value),

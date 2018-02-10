@@ -1,6 +1,5 @@
 import os
 import pathlib
-import sys
 
 from aiohttp import web
 from autocommand import autocommand
@@ -12,7 +11,7 @@ from bobbin import twitter, tweetbox, async_cache, api_server, web_util, fronten
 
 class AsyncLRUCache(async_cache.Cache):
 	def __init__(self, max_size):
-		self.cache = cachetools.LRUCache(max_size, getsizeof=sys.getsizeof)
+		self.cache = cachetools.LRUCache(max_size, getsizeof=async_cache.get_size_of)
 
 	async def get(self, key):
 		with self.convert_keyerror():

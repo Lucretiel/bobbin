@@ -6,9 +6,7 @@ import _ from 'lodash'
 import Tweet from 'components/Tweet.jsx'
 import promiseRunner from 'promiseChain.jsx'
 
-const cancelError = new Error("Cancelled")
-
-const notCancelled = handler => result => result === cancelError ? result : handler(result)
+const xor = (a, b) => (a && !b) || (b && !a)
 
 export default class TweetList extends React.PureComponent {
 	static propTypes = {
@@ -22,46 +20,31 @@ export default class TweetList extends React.PureComponent {
 		super(props)
 
 		this.runner = promiseRunner(4)
-		this.loadingTask = Promise.resolve()
-		this.cancelled = false
-		this.cancelTask = new Promise((resolve, reject) => {
-			this.cancelFunc = () => {
-				resolve(cancelError)
-				this.cancelled = true
-			}
-		})
+		this.loadingCount = 0
 	}
 
-	tweetLoading(tweetLoadedPromise) {
-		this.props.fullyRendered(false)
-
-		this.loadingTask = Promise.race([
-			// Chain the two completion loaders
-			Promise.all([
-				// Undo the fullyRendered call from the previous completion, and
-				// suppress cancelation rejections from it.
-				this.loadingTask.then(notCancelled(result => this.props.fullyRendered(false))),
-
-				//TODO: find a way to cancel tweet loading elegantly
-				tweetLoadedPromise.catch(reason => {
-					if(!this.cancelled) console.error("Error loading tweet:", reason)
-				}),
-			]),
-			this.cancelTask
-		]).then(notCancelled(result => this.props.fullyRendered(true)))
+	updateLoadingCount = delta => {
+		const prevCount = this.loadingCount
+		const newCount = prevCount + delta
+		if(xor(newCount, prevCount)) {
+			this.props.fullyRendered(newCount === 0)
+		}
+		this.loadingCount = newCount
 	}
 
-	componentWillUnmount() {
-		this.cancelFunc()
-	}
+	incrementLoading = (delta = 1) => this.updateLoadingCount(delta)
+	decrementLoading = (delta = 1) => this.updateLoadingCount(-delta)
+
+	scheduleLoad = loadTweet => this.runner(() => {
+		this.incrementLoading()
+		return loadTweet()
+	}).then(() => this.decrementLoading())
 
 	render() {
 		return <ul className="list-unstyled">{
 			_.map(this.props.tweetIds, tweetId =>
 				<li key={tweetId}>
-					<Tweet tweetId={tweetId} runner={
-						loadTweet => this.tweetLoading(this.runner(loadTweet))
-					}/>
+					<Tweet tweetId={tweetId} runner={this.scheduleLoad}/>
 				</li>
 			)
 		}</ul>

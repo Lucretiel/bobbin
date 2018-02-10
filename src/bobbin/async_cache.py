@@ -1,5 +1,8 @@
 import abc
 import contextlib
+import collections
+import itertools
+import sys
 
 from bobbin import task_manager
 
@@ -112,3 +115,23 @@ class SyncStackedCache(BaseUpdaterStackedCache):
 			await writes.wait()
 
 		return result
+
+
+size_handlers = {
+	list: iter,
+	tuple: iter,
+	collections.deque: iter,
+	set: iter,
+	frozenset: iter,
+	dict: lambda d: itertools.chain(d.keys(), d.values())
+}
+
+
+def get_size_of(thing):
+	base_size = sys.getsizeof(thing)
+
+	for t, handler in size_handlers.items():
+		if isinstance(thing, t):
+			return base_size + sum(map(get_size_of, handler(thing)))
+
+	return base_size

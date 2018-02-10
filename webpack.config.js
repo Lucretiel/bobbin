@@ -8,7 +8,7 @@ module.exports = {
 	context: dir("frontend-src"),
 	entry: [
 		'main.jsx',
-		'style.scss',
+		'style.css',
 	],
 	output: {
 		path: dir("static/dist/"),
@@ -37,12 +37,11 @@ module.exports = {
 					},
 				}],
 			}, {
-				test: /\.scss$/,
+				test: /\.css$/,
 				exclude: dir('node_modules'),
 				use: [
 					"style-loader",
 					"css-loader",
-					"sass-loader",
 				]
 			}
 		],

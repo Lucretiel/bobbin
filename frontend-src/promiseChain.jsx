@@ -13,26 +13,29 @@ export default function promiseRunner(maxConcurrent) {
 	let runningTasks = 0
 	const waitingTasks = []
 
-	const taskComplete = () => {
+	const launchNextTask = () => {
 		if(waitingTasks.length > 0 && runningTasks <= maxConcurrent) {
-			setTimeout(waitingTasks.shift(), 0)
+			const runner = waitingTasks.shift()
+			runner()
 		} else {
 			runningTasks -= 1
 		}
 	}
 
-	return callable => new Promise(resolve => {
+	return userRunner => new Promise(resolve => {
 		const runner = () => {
-			const task = callable()
-			resolve(task)
-			task.catch(ignoreErr).then(taskComplete)
+			const task = new Promise(resolve => resolve(userRunner()))
+			task.catch(ignoreErr).then(() => {
+				launchNextTask()
+				resolve(task)
+			})
 		}
 
 		if(runningTasks >= maxConcurrent) {
 			waitingTasks.push(runner)
 		} else {
 			runningTasks += 1
-			setTimeout(runner, 0)
+			runner()
 		}
 	})
 }

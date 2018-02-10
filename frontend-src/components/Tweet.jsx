@@ -7,20 +7,39 @@ export default class EmbeddedTweet extends React.PureComponent {
 		runner: PropTypes.func.isRequired,
 	}
 
-	setNode(node) {
-		this.node = node
+	constructor(props) {
+		super(props)
+
+		this.cancel = false
+		this.node = null
+
+		this.state = {
+			error: null
+		}
 	}
 
 	componentDidMount() {
-		this.props.runner(() =>
+		this.props.runner(() => this.cancel ? null :
 			window.twttr.widgets.createTweet(this.props.tweetId, this.node, {
 				conversation: "none",
 				align: "center",
 			})
-		)
+		).catch(error => this.setState({error: error}))
 	}
 
+	componentWillUnmount() {
+		this.cancel = true
+	}
+
+	setNode = node => this.node = node
+
 	render() {
-		return <div className="tweet-container" ref={node => this.setNode(node)}></div>
+		return <div>
+			{
+				!this.state.error ?
+					<div key="tweet-container" className="tweet-container" ref={this.setNode}></div> :
+					<div key="tweet-error" className="tweet-error tweet-like">{this.state.error}</div>
+			}
+		</div>
 	}
 }

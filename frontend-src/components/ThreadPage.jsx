@@ -27,15 +27,17 @@ export default class ThreadPage extends React.PureComponent {
 			`head=${head}&tail=${tail}` :
 			`tail=${tail}`
 
-		fetch(`/api/thread?${query}`).then(
-			response => response.json()
-		).then(
-			content => this.setState({
+		fetch(`/api/thread?${query}`)
+		.then(response => response.json())
+		.then(content => this.setState({
 				threadTweetIds: content.thread,
 				author: content.author,
-			})
-		)
+		}))
 	}
+
+	fullyRenderedCb = rendered => this.setState({
+		fullyRendered: rendered
+	})
 
 	render() {
 		const {threadTweetIds, author, fullyRendered} = this.state
@@ -50,12 +52,6 @@ export default class ThreadPage extends React.PureComponent {
 				</span>
 			</a></h3>:
 			<h3>Conversation</h3>
-
-		const fullyRenderedCb = rendered => {
-			this.setState({
-				fullyRendered: rendered
-			})
-		}
 
 		return <div className="container">
 			<Title>{
@@ -74,14 +70,14 @@ export default class ThreadPage extends React.PureComponent {
 						null :
 						<TweetList
 							tweetIds={threadTweetIds}
-							fullyRendered={fullyRenderedCb}
+							fullyRendered={this.fullyRenderedCb}
 						/>
 					}
 				</div>
 			</div>
 			<div className="row">
 				<div className="col">
-					<div className="text-center thread-end">
+					<div className="text-center thread-end tweet-like">
 						{fullyRendered ?
 							<span className="strike">
 								<span>End of Thread</span>
