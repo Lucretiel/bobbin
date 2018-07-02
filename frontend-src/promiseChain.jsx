@@ -25,10 +25,7 @@ export default function promiseRunner(maxConcurrent) {
 	return userRunner => new Promise(resolve => {
 		const runner = () => {
 			const task = new Promise(resolve => resolve(userRunner()))
-			task.catch(ignoreErr).then(() => {
-				launchNextTask()
-				resolve(task)
-			})
+			resolve(task.finally(() => launchNextTask()))
 		}
 
 		if(runningTasks >= maxConcurrent) {
