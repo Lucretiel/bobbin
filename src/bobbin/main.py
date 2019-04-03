@@ -73,7 +73,7 @@ async def main(
 
 	cache = AsyncLRUCache(max_size=parse_size(cache_size))
 
-	with aiohttp.ClientSession() as session:
+	async with aiohttp.ClientSession() as session:
 		token = twitter.Token(session, key, secret)
 
 		get_thread = tweetbox.make_thread_getter(
