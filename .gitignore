@@ -104,6 +104,6 @@ ENV/
 .DS_Store
 *.sublime-workspace
 *.sublime-project
-secrets
+run_local.sh
 node_modules
 

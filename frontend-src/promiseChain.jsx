@@ -9,19 +9,26 @@ then resolves with the result of the callable.
 
 export default function promiseRunner(maxConcurrent) {
 	let runningTasks = 0
+
+	// List of functions that initate the task
 	const waitingTasks = []
+
+	const launchNextTask = () => {
+		if(waitingTasks.length > 0 && runningTasks <= maxConcurrent) {
+			const runner = waitingTasks.shift()
+			runner()
+		} else {
+			runningTasks -= 1
+		}
+	}
 
 	return userRunner => new Promise(resolve => {
 		const runner = () => {
-			const task = new Promise(resolve => resolve(userRunner()))
-			resolve(task.finally(() => {
-				if(waitingTasks.length > 0 && runningTasks <= maxConcurrent) {
-					const runner = waitingTasks.shift()
-					runner()
-				} else {
-					runningTasks -= 1
-				}
-			}))
+			const task = new Promise(resolveTask => resolveTask(userRunner()))
+			task.catch(ignoreErr).then(() => {
+				launchNextTask()
+				resolve(task)
+			})
 		}
 
 		if(runningTasks >= maxConcurrent) {
