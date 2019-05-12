@@ -1,4 +1,0 @@
-aiohttp==3.5.4
-autocommand==2.2.1
-cachetools==2.0.1
--e .
