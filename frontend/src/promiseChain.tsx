@@ -7,27 +7,33 @@ representing that work. The returned Promise waits for the callable to start,
 then resolves with the result of the callable.
 */
 
-export default function promiseRunner(maxConcurrent) {
+export default function promiseRunner<T>(maxConcurrent: number):
+	(userRunner: () => PromiseLike<T> | Promise<T> | T) => Promise<T>
+{
 	let runningTasks = 0
 
 	// List of functions that initate the task
-	const waitingTasks = []
+	const waitingTasks: Array<() => void> = []
 
-	return userRunner => new Promise(resolve => {
+	const taskComplete = () => {
+		if(runningTasks <= maxConcurrent) {
+			const runner = waitingTasks.shift();
+			if(runner) {
+				runner()
+			}
+		} else {
+			runningTasks -= 1;
+		}
+	}
+
+	return (userRunner: () => PromiseLike<T> | Promise<T> | T): Promise<T> => new Promise<T>(resolve => {
 		const runner = () => {
 			// Promisify the userRunner– handle thrown exceptions and non-promise return
 			// values
-			const task = new Promise(resolveTask => resolveTask(userRunner()))
+			const task = new Promise<T>(resolveTask => resolveTask(userRunner()))
 
 			// Schedule the next task when the user task completes
-			resolve(task.finally(() => {
-				if(waitingTasks.length > 0 && runningTasks <= maxConcurrent) {
-					const nextRunner = waitingTasks.shift()
-					nextRunner()
-				} else {
-					runningTasks -= 1
-				}
-			}))
+			resolve(task.finally(taskComplete));
 		}
 
 		if(runningTasks >= maxConcurrent) {

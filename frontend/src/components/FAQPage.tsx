@@ -1,9 +1,5 @@
 import React from 'react'
-import PropTypes from 'prop-types'
-
-import _ from 'lodash'
-
-import Title from 'components/Title.jsx'
+import Title from './Title'
 
 const entries = [{
 	question: "What is this?",
@@ -27,6 +23,14 @@ const entries = [{
 		loads of the thread should be faster.
 	</span>
 }, {
+	question: "Does bobbin store my tweets?",
+	answer: <span>
+		Nope! The only thing that bobbin stores is the 20+ digit tweet ID of each tweet
+		in the thread, plus your own User ID. It uses Twitter's own "embedded tweet"
+		widget to actually display the tweet. We don't store any of your content,
+		and any tweets you delete will not appear in the thread.
+	</span>
+}, {
 	question: "Why is it called Bobbin?",
 	answer: <span>
 		Because a <a href="https://en.wikipedia.org/wiki/Bobbin">bobbin</a> is how
@@ -34,27 +38,27 @@ const entries = [{
 	</span>
 }]
 
-export default class FaqPage extends React.PureComponent {
-	render() {
-		return <div className="container" id="faq">
-			<Title>Bobbin FAQ</Title>
-			<div className="row">
-				<div className="col text-center">
-					<h2>Frequently Asked Questions</h2>
-				</div>
-			</div>
-			<div className="row justify-content-center">
-				<div className="col col-lg-8 col-md-10">
-					<dl>{
-						_.map(entries, ({question, answer}, index) =>
-							<div className="faq-item" key={index}>
-								<dt className="faq-question">{question}</dt>
-								<dd className="faq-answer">{answer}</dd>
-							</div>
-						)
-					}</dl>
-				</div>
+const FaqPage: React.FC = () => (
+	<div className="container" id="faq">
+		<Title>Bobbin FAQ</Title>
+		<div className="row">
+			<div className="col text-center">
+				<h2>Frequently Asked Questions</h2>
 			</div>
 		</div>
-	}
-}
+		<div className="row justify-content-center">
+			<div className="col col-lg-8 col-md-10">
+				<dl>{
+					entries.map(({question, answer}, index) =>
+						<div className="faq-item" key={index}>
+							<dt className="faq-question">{question}</dt>
+							<dd className="faq-answer">{answer}</dd>
+						</div>
+					)
+				}</dl>
+			</div>
+		</div>
+	</div>
+);
+
+export default FaqPage;
