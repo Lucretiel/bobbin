@@ -1,7 +1,7 @@
 .PHONY: all compressed bundle zopfli gzip brotli sizes clean mod-clean clean-all compressed pipenv
 
 WEBPACK_OUTPUT_DIR ?= $(PWD)/static/dist
-PIPENV_DIR = $(PWD)/.venv
+PIPENV_DIR = $(shell pipenv --venv 2>/dev/null || echo $(PWD)/.venv)
 
 BUNDLEJS = $(WEBPACK_OUTPUT_DIR)/bundle.js
 BUNDLEBR = $(BUNDLEJS).br
@@ -18,7 +18,7 @@ bundle: $(BUNDLEJS)
 zopfli: $(BUNDLEGZ)
 brotli: $(BUNDLEBR)
 gzip: zopfli
-pipenv: .venv
+pipenv: $(PIPENV_DIR)
 
 sizes: all
 	ls -lh $(WEBPACK_OUTPUT_DIR)
@@ -52,9 +52,9 @@ node_modules: package.json yarn.lock
 	yarn --no-progress install
 	touch -ma node_modules
 
-.venv: Pipfile Pipfile.lock
-	env PIPENV_VENV_IN_PROJECT=1 PIPENV_NOSPIN=1 pipenv install
-	touch -ma .venv
+$(PIPENV_DIR): Pipfile Pipfile.lock
+	pipenv install
+	touch -ma $$(pipenv --venv)
 
 clean-all: clean mod-clean
 
