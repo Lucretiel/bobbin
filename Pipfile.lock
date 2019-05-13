@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "f4a7cd1d975aa19b8ba7af4c18a93f0903bb3ce5f38f41193bada17f1b628ee1"
+            "sha256": "617d9837e8cdd09e49f02294cd9b761516b74ec39620a07a930ea4ec3a632f4e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -68,7 +68,7 @@
         },
         "bobbin": {
             "editable": true,
-            "file": "file:///Users/nathan/Documents/bobbin"
+            "file": "."
         },
         "cachetools": {
             "hashes": [

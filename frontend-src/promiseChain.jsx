@@ -13,22 +13,21 @@ export default function promiseRunner(maxConcurrent) {
 	// List of functions that initate the task
 	const waitingTasks = []
 
-	const launchNextTask = () => {
-		if(waitingTasks.length > 0 && runningTasks <= maxConcurrent) {
-			const runner = waitingTasks.shift()
-			runner()
-		} else {
-			runningTasks -= 1
-		}
-	}
-
 	return userRunner => new Promise(resolve => {
 		const runner = () => {
+			// Promisify the userRunner– handle thrown exceptions and non-promise return
+			// values
 			const task = new Promise(resolveTask => resolveTask(userRunner()))
-			task.catch(ignoreErr).then(() => {
-				launchNextTask()
-				resolve(task)
-			})
+
+			// Schedule the next task when the user task completes
+			resolve(task.finally(() => {
+				if(waitingTasks.length > 0 && runningTasks <= maxConcurrent) {
+					const nextRunner = waitingTasks.shift()
+					nextRunner()
+				} else {
+					runningTasks -= 1
+				}
+			}))
 		}
 
 		if(runningTasks >= maxConcurrent) {

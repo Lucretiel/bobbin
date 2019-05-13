@@ -1,6 +1,10 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 
+const twitterPromise = new Promise(resolve => {
+	window.twttr.ready(twttr => resolve(twttr))
+})
+
 export default class EmbeddedTweet extends React.PureComponent {
 	static propTypes = {
 		tweetId: PropTypes.string.isRequired,
@@ -19,12 +23,16 @@ export default class EmbeddedTweet extends React.PureComponent {
 	}
 
 	componentDidMount() {
-		this.props.runner(() => this.cancel ? null :
-			window.twttr.widgets.createTweet(this.props.tweetId, this.node, {
+		this.props.runner(() => this.cancel ? null : (twitterPromise
+			.then(twttr => twttr.widgets.createTweet(this.props.tweetId, this.node, {
 				conversation: "none",
 				align: "center",
+			}))
+			.catch(error => {
+				this.setState({error: error});
+				console.error(error);
 			})
-		).catch(error => this.setState({error: error}))
+		))
 	}
 
 	componentWillUnmount() {
@@ -38,7 +46,7 @@ export default class EmbeddedTweet extends React.PureComponent {
 			{
 				!this.state.error ?
 					<div key="tweet-container" className="tweet-container" ref={this.setNode}></div> :
-					<div key="tweet-error" className="tweet-error tweet-like">{this.state.error}</div>
+					<div key="tweet-error" className="tweet-error tweet-like">{JSON.stringify(this.state.error)}</div>
 			}
 		</div>
 	}

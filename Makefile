@@ -1,22 +1,24 @@
-.PHONY: all compressed bundle zopfli gzip brotli sizes clean mod-clean clean-all compressed
+.PHONY: all compressed bundle zopfli gzip brotli sizes clean mod-clean clean-all compressed pipenv
 
 WEBPACK_OUTPUT_DIR ?= $(PWD)/static/dist
+PIPENV_DIR = $(PWD)/.venv
 
 BUNDLEJS = $(WEBPACK_OUTPUT_DIR)/bundle.js
 BUNDLEBR = $(BUNDLEJS).br
 BUNDLEGZ = $(BUNDLEJS).gz
 
-SRC_FILES = $(shell find frontend-src -type f)
+JS_SRC_FILES = $(shell find frontend-src -type f)
 WEBPACK = $(shell npm bin)/webpack
 BROTLI = $(shell which bro brotli)
 ZOPFLI = $(shell which zopfli)
 
-all: bundle compressed
+all: bundle compressed pipenv
 compressed: zopfli brotli
 bundle: $(BUNDLEJS)
 zopfli: $(BUNDLEGZ)
 brotli: $(BUNDLEBR)
 gzip: zopfli
+pipenv: .venv
 
 sizes: all
 	ls -lh $(WEBPACK_OUTPUT_DIR)
@@ -37,10 +39,7 @@ WEBPACK_FLAGS =
 
 endif
 
-$(BUNDLEJS): $(SRC_FILES) \
-	webpack.config.js \
-	node_modules
-
+$(BUNDLEJS): $(JS_SRC_FILES) webpack.config.js node_modules
 	env NODE_ENV=$(ENV) $(WEBPACK) --progress $(WEBPACK_FLAGS) --output-path $(WEBPACK_OUTPUT_DIR)
 
 $(BUNDLEBR): $(BUNDLEJS)
@@ -49,9 +48,13 @@ $(BUNDLEBR): $(BUNDLEJS)
 $(BUNDLEGZ): $(BUNDLEJS)
 	$(ZOPFLI) $(BUNDLEJS) -c > $(BUNDLEGZ)
 
-node_modules: package.json $(wildcard yarn.lock)
-	yarn install
+node_modules: package.json yarn.lock
+	yarn --no-progress install
 	touch -ma node_modules
+
+.venv: Pipfile Pipfile.lock
+	env PIPENV_VENV_IN_PROJECT=1 PIPENV_NOSPIN=1 pipenv install
+	touch -ma .venv
 
 clean-all: clean mod-clean
 
