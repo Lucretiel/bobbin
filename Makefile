@@ -1,4 +1,4 @@
-.PHONY: all compressed bundle zopfli gzip brotli sizes clean mod-clean clean-all compressed pipenv
+.PHONY: all compressed bundle zopfli gzip brotli sizes clean mod-clean clean-all compressed pipenv frontend
 
 WEBPACK_OUTPUT_DIR ?= $(PWD)/static/dist
 PIPENV_DIR = $(shell pipenv --venv 2>/dev/null || echo $(PWD)/.venv)
@@ -12,7 +12,8 @@ WEBPACK = $(shell npm bin)/webpack
 BROTLI = $(shell which bro brotli)
 ZOPFLI = $(shell which zopfli)
 
-all: bundle compressed pipenv
+all: frontend pipenv
+frontend: bundle compressed
 compressed: zopfli brotli
 bundle: $(BUNDLEJS)
 zopfli: $(BUNDLEGZ)
@@ -20,7 +21,7 @@ brotli: $(BUNDLEBR)
 gzip: zopfli
 pipenv: $(PIPENV_DIR)
 
-sizes: all
+sizes: frontend
 	ls -lh $(WEBPACK_OUTPUT_DIR)
 
 compressed: zopfli brotli
