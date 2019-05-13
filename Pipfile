@@ -9,7 +9,6 @@ verify_ssl = true
 aiohttp = "==3.5.4"
 autocommand = "==2.2.1"
 cachetools = "==2.0.1"
-bobbin = {editable = true,file = "."}
 
 [requires]
 python_version = "3.7"

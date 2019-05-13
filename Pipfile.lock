@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "617d9837e8cdd09e49f02294cd9b761516b74ec39620a07a930ea4ec3a632f4e"
+            "sha256": "d4a67be08db42677b3048dafab09229b9c71a705365af5da2ec4f95004651521"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -65,10 +65,6 @@
             ],
             "index": "pypi",
             "version": "==2.2.1"
-        },
-        "bobbin": {
-            "editable": true,
-            "file": "."
         },
         "cachetools": {
             "hashes": [
