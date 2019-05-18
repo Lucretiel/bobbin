@@ -7,7 +7,7 @@
  */
 
 import React from 'react'
-import Title from './Title'
+import {Helmet} from "react-helmet";
 
 const entries = [{
 	question: "What is this?",
@@ -48,7 +48,9 @@ const entries = [{
 
 const FaqPage: React.FC = () => (
 	<div className="container" id="faq">
-		<Title>Bobbin FAQ</Title>
+		<Helmet>
+			<title>Bobbin FAQ</title>
+		</Helmet>
 		<div className="row">
 			<div className="col text-center">
 				<h2>Frequently Asked Questions</h2>
@@ -56,14 +58,12 @@ const FaqPage: React.FC = () => (
 		</div>
 		<div className="row justify-content-center">
 			<div className="col col-lg-8 col-md-10">
-				<dl>{
-					entries.map(({question, answer}, index) =>
-						<div className="faq-item" key={index}>
-							<dt className="faq-question">{question}</dt>
-							<dd className="faq-answer">{answer}</dd>
-						</div>
-					)
-				}</dl>
+				<dl>{entries.map(({question, answer}) =>
+					<div className="faq-item" key={question}>
+						<dt className="faq-question">{question}</dt>
+						<dd className="faq-answer">{answer}</dd>
+					</div>
+				)}</dl>
 			</div>
 		</div>
 	</div>
