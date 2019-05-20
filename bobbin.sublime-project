@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"js_prettier": {
+			"prettier_cli_path": "./frontend/node_modules/.bin/prettier",
+			"auto_format_on_save": true,
+		}
+	}
+}

@@ -7,24 +7,60 @@
  */
 
 import React from 'react'
-
 import Tweet from './Tweet'
-import promiseRunner from '../promiseChain'
 
-interface TweetListProps {
-	tweetIds: string[],
-	fullyRendered(isFullyRendered: boolean): void,
+/**
+ * Helper for passing a callback to each component in a loop. Given a callback
+ * with the signature (key, ..args), returns a new factory with the signature
+ * (key) => (...args). When called with a key, returns a wrapper function taking
+ * (...args) wich calls the original callback. This wrapper function is guaranteed
+ * to be the same for any given key.
+ */
+/*const useKeyedCallback = function<
+	Ret,
+	Key,
+	Args extends Array<any>
+>(
+	callback: (key: Key, ...args: Args) => Ret,
+):
+	(key: Key) => (...args: Args) => Ret
+{
+	return React.useMemo(() => memoize(key => (...args) => callback(key, ...args)), [])
 }
+*/
 
-const TweetList: React.FC<TweetListProps> = ({tweetIds, fullyRendered}) => {
+type TweetsRendered = {[tweetId: string]: boolean};
+
+const TweetList: React.FC<{
+	tweetIds: string[],
+	fullyRendered: (isFullyRendered: boolean) => void,
+}> = ({tweetIds, fullyRendered}) => {
+	const [tweetsRendered, setTweetsRendered] = React.useState<{[tweetId: string]: boolean}>({});
+
+	const setRendered = React.useCallback(
+		(tweetId: string, isRendered: boolean) => setTweetsRendered(oldRendered => ({
+			...oldRendered,
+			[tweetId]: isRendered,
+		})), [setTweetsRendered])
+
 	React.useEffect(() => {
-		fullyRendered(true);
-	});
+		const renderCount = Object.values(tweetsRendered).filter(r => r).length;
+
+		if(renderCount === tweetIds.length) {
+			fullyRendered(true)
+		} else {
+			fullyRendered(false)
+		}
+	}, [fullyRendered, tweetsRendered, tweetIds]);
 
 	return <ul className="list-unstyled">{
 		tweetIds.map((tweetId: string) =>
 			<li key={tweetId}>
-				<Tweet tweetId={tweetId} done={() => {}}/>
+				<Tweet
+					key={tweetId}
+					tweetId={tweetId}
+					// TODO: find a way to cache the setRendered function for each individual Tweet
+					rendered={isRendered => setRendered(tweetId, isRendered)} />
 			</li>
 		)
 	}</ul>

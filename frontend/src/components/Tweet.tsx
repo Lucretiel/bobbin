@@ -6,74 +6,50 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import React from 'react'
+import React from "react";
 
-interface Twitter {
-	widgets: {
-		createTweet(
-			tweetId: string,
-			element: HTMLElement,
-			options?: {
-				cards?: 'hidden',
-				conversation?: 'none',
-				theme?: 'light' | 'dark',
-				linkColor?: string,
-				width?: number,
-				align?: 'left' | 'right' | 'center',
-				lang?: string,
-				dnt?: boolean,
-			}): Promise<HTMLElement>,
-	}
-}
+import twttr from '../twitter'
 
-declare global {
-	interface Window {
-		twttr: {
-			ready(callback: (twttr: Twitter) => void): void,
-		}
-	}
-}
-const twitterPromise: Promise<Twitter> = new Promise(resolve => {
-	window.twttr.ready(twttr => resolve(twttr))
-})
-
-interface TweetProps {
-	tweetId: string,
-	done: () => void,
-}
-
-const EmbeddedTweet: React.FC<TweetProps> = ({tweetId, done}) => {
-	const [error, setError] = React.useState<Error | null>(null);
+const EmbeddedTweet: React.FC<{
+	tweetId: string;
+	rendered: (isRendered: boolean) => void;
+}> = ({ tweetId, rendered }) => {
 	const [node, setNode] = React.useState<HTMLDivElement | null>(null);
+	const [isRendered, setIsRendered] = React.useState(false);
 
 	React.useEffect(() => {
-		const loadTweet = async () => {
-			const twttr = await twitterPromise;
-			if (node === null) {
-				return
-			} else try {
-				await twttr.widgets.createTweet(tweetId, node, {
-					conversation: "none",
-					align: "center"
-				})
-			} catch(error) {
-				console.error(error);
-				setError(error);
-			}
+		if (node === null) {
+			return;
+		}
+
+		const tweetTask = twttr.widgets
+			.createTweet(tweetId, node, {
+				conversation: "none",
+				align: "center",
+			})
+			.then(tweet => {
+				setIsRendered(true);
+				return tweet;
+			});
+
+		tweetTask.catch(error => {
+			console.error(error);
+		});
+
+		return () => {
+			tweetTask.then(tweet => {
+				setIsRendered(false);
+			});
 		};
+	}, [node, tweetId, setIsRendered]);
 
-		loadTweet().finally(done);
-	},
+	// Use a separate effect to call `rendered` so that if the callback changes we
+	// don't have to completely reload the tweet.
+	React.useEffect(() => {
+		rendered(isRendered);
+	}, [rendered, isRendered]);
 
-	// We explicitly omit the `done` function from the dependencies list, since the only thing that
-	// should trigger a re-render is a new node.
-	[node])
-
-	// We us key={tweetId} here to force react to create a new div if the tweetId changes. This
-	// will force our effect to re-run.
-	return error === null ?
-		<div key={tweetId}><div key="tweet-container" className="tweet-container" ref={setNode}></div></div> :
-		<div key={tweetId}><div key="tweet-error" className="tweet-error tweet-like">{JSON.stringify(error)}</div></div>
+	return <div key={tweetId} className="tweet-container" ref={setNode} />;
 };
 
 export default EmbeddedTweet;

@@ -6,113 +6,107 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+/************************************************/
 html,
 body,
 #root {
-	height: 100%;
-	margin: 0;
-	padding: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-#page-wrapper {
-	display: flex;
-	flex-direction: column;
-	min-height: 100%;
+.grow-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
-#page-wrapper main {
-	flex: 1;
-    margin: 1rem 0;
+.grow-main main {
+  flex: 1;
 }
 
-header, nav, footer {
-    background-color: #f5f5f5;
-}
-
-#page-wrapper footer {
-    min-height: 30pt;
-    line-height: 30pt;
-}
+/************************************************/
 
 .footer-item {
-    padding: .5rem 1rem;
+  padding: 0.5rem 1rem;
 }
 
 .beta-label {
-    font-weight: lighter;
+  margin-left: 0.5rem;
+  font-weight: lighter;
 }
 
 /************************************************/
 
 #homepage {
-    margin-top: 4rem;
+  margin-top: 4rem;
 }
 
 #tweet-entry-form {
-    margin-top: 4rem;
+  margin-top: 4rem;
 }
 
 /************************************************/
 
-
 .author-handle {
-	color: #697882;
-	font-size: 1.5rem;
+  color: #697882;
+  font-size: 1.5rem;
 }
 
 .author-name {
-	font-weight: bold;
+  font-weight: bold;
 }
 
 .author {
-	color: #212529;
+  color: #212529;
 }
 
 .tweet-like {
-    /* Copied from the tweet style */
-    max-width: 500px;
-    min-width: 220px;
+  /* Copied from the tweet style */
+  max-width: 500px;
+  min-width: 220px;
 }
 
 .thread-end {
-    margin-left: auto;
-    margin-right: auto;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /************************************************/
 
 .strike {
-    display: block;
-    text-align: center;
-    overflow: hidden;
-    white-space: nowrap;
+  display: block;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .strike > span {
-    position: relative;
-    display: inline-block;
+  position: relative;
+  display: inline-block;
 }
 
 .strike > span:before,
 .strike > span:after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    width: 9999px;
-    height: 1px;
-    background: lightgrey;
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 9999px;
+  height: 1px;
+  background: lightgrey;
 }
 
 .strike > span:before {
-    right: 100%;
-    margin-right: 15px;
+  right: 100%;
+  margin-right: 15px;
 }
 
 .strike > span:after {
-    left: 100%;
-    margin-left: 15px;
+  left: 100%;
+  margin-left: 15px;
 }
 
 /************************************************/
 
-@import "~bootstrap/scss/bootstrap";
+$speed: 200ms;
+@import "~bulma";
