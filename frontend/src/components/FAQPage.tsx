@@ -84,9 +84,12 @@ const FaqPage: React.FC = () => (
 			<div className="content">
 				<dl>
 					{entries.map(({ question, answer, slug }) => (
-						<div className="faq-item" key={slug} id="slug">
+						<div className="faq-item" key={slug} id={slug}>
 							<dt className="faq-question">
 								<strong>{question}</strong>
+								<a className="hoverlink" href={`#${slug}`}>
+									<i className="fas fa-link" />
+								</a>
 							</dt>
 							<dd className="faq-answer">{answer}</dd>
 						</div>

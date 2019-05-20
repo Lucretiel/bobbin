@@ -69,6 +69,15 @@ body,
   margin-bottom: 0pt;
 }
 
+a.hoverlink {
+  visibility: hidden;
+  padding: 0 4pt;
+}
+
+*:hover > a.hoverlink {
+  visibility: visible;
+}
+
 /************************************************/
 
 .author-header {
