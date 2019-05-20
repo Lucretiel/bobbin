@@ -49,6 +49,8 @@ const EmbeddedTweet: React.FC<{
 		rendered(isRendered);
 	}, [rendered, isRendered]);
 
+	// if the tweetId changes, the key here will force the old tweet to unmount
+	// and a new div to be created as a target for the new
 	return <div key={tweetId} className="tweet-container" ref={setNode} />;
 };
 
