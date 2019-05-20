@@ -7,6 +7,13 @@
  */
 
 /************************************************/
+
+$speed: 200ms;
+$footer-padding: 1rem 1.5rem;
+$title-strong-weight: bold;
+@import "~bulma";
+
+/************************************************/
 html,
 body,
 #root {
@@ -31,34 +38,51 @@ body,
   padding: 0.5rem 1rem;
 }
 
+.logo {
+  font-size: 1.4em;
+}
+
+.logo-label {
+}
+
 .beta-label {
   margin-left: 0.5rem;
+  font-size: 0.9em;
   font-weight: lighter;
 }
 
 /************************************************/
 
-#homepage {
-  margin-top: 4rem;
+.transition {
+  transition: 300ms;
 }
 
-#tweet-entry-form {
-  margin-top: 4rem;
+#faq-content {
+  max-width: 50em;
+}
+
+.hover-underline {
+  margin-bottom: 1pt;
+}
+.hover-underline:hover {
+  border-bottom: 1pt solid currentColor;
+  margin-bottom: 0pt;
 }
 
 /************************************************/
 
-.author-handle {
-  color: #697882;
+.author-header {
   font-size: 1.5rem;
 }
 
 .author-name {
   font-weight: bold;
+  @extend .has-text-black-ter;
 }
 
-.author {
-  color: #212529;
+.author-handle {
+  font-size: 1.25rem;
+  @extend .has-text-grey-light;
 }
 
 .tweet-like {
@@ -105,8 +129,3 @@ body,
   left: 100%;
   margin-left: 15px;
 }
-
-/************************************************/
-
-$speed: 200ms;
-@import "~bulma";

@@ -9,8 +9,14 @@
 import React from "react";
 import { Helmet } from "react-helmet";
 
-const entries = [
+type Entry = {
+	slug: string;
+	question: string;
+	answer: React.ReactElement;
+};
+const entries: Entry[] = [
 	{
+		slug: "what-is-this",
 		question: "What is this?",
 		answer: (
 			<span>
@@ -19,6 +25,7 @@ const entries = [
 		),
 	},
 	{
+		slug: "how-does-it-work",
 		question: "How does it work?",
 		answer: (
 			<span>
@@ -31,6 +38,7 @@ const entries = [
 		),
 	},
 	{
+		slug: "load-times",
 		question: "Why does it take a while for my thread to load?",
 		answer: (
 			<span>
@@ -42,6 +50,7 @@ const entries = [
 		),
 	},
 	{
+		slug: "does-bobbin-store-tweets",
 		question: "Does bobbin store my tweets?",
 		answer: (
 			<span>
@@ -54,6 +63,7 @@ const entries = [
 		),
 	},
 	{
+		slug: "why-is-it-called-bobbin",
 		question: "Why is it called Bobbin?",
 		answer: (
 			<span>
@@ -65,28 +75,26 @@ const entries = [
 ];
 
 const FaqPage: React.FC = () => (
-	<div id="faq">
+	<section className="section">
 		<Helmet>
 			<title>Bobbin FAQ</title>
 		</Helmet>
-		<div className="row">
-			<div className="col text-center">
-				<h2>Frequently Asked Questions</h2>
-			</div>
-		</div>
-		<div className="row justify-content-center">
-			<div className="col col-lg-8 col-md-10">
+		<div className="container" id="faq-content">
+			<h2 className="title">Frequently Asked Questions</h2>
+			<div className="content">
 				<dl>
-					{entries.map(({ question, answer }) => (
-						<div className="faq-item" key={question}>
-							<dt className="faq-question">{question}</dt>
+					{entries.map(({ question, answer, slug }) => (
+						<div className="faq-item" key={slug} id="slug">
+							<dt className="faq-question">
+								<strong>{question}</strong>
+							</dt>
 							<dd className="faq-answer">{answer}</dd>
 						</div>
 					))}
 				</dl>
 			</div>
 		</div>
-	</div>
+	</section>
 );
 
 export default FaqPage;
