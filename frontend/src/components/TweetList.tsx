@@ -6,8 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import React from 'react'
-import Tweet from './Tweet'
+import React from "react";
+import Tweet from "./Tweet";
 
 /**
  * Helper for passing a callback to each component in a loop. Given a callback
@@ -29,41 +29,49 @@ import Tweet from './Tweet'
 }
 */
 
-type TweetsRendered = {[tweetId: string]: boolean};
+type TweetsRendered = { [tweetId: string]: boolean };
 
 const TweetList: React.FC<{
-	tweetIds: string[],
-	fullyRendered: (isFullyRendered: boolean) => void,
-}> = ({tweetIds, fullyRendered}) => {
-	const [tweetsRendered, setTweetsRendered] = React.useState<{[tweetId: string]: boolean}>({});
+	tweetIds: string[];
+	fullyRendered: (isFullyRendered: boolean) => void;
+}> = ({ tweetIds, fullyRendered }) => {
+	const [tweetsRendered, setTweetsRendered] = React.useState<{
+		[tweetId: string]: boolean;
+	}>({});
 
 	const setRendered = React.useCallback(
-		(tweetId: string, isRendered: boolean) => setTweetsRendered(oldRendered => ({
-			...oldRendered,
-			[tweetId]: isRendered,
-		})), [setTweetsRendered])
+		(tweetId: string, isRendered: boolean) =>
+			setTweetsRendered(oldRendered => ({
+				...oldRendered,
+				[tweetId]: isRendered,
+			})),
+		[setTweetsRendered],
+	);
 
 	React.useEffect(() => {
 		const renderCount = Object.values(tweetsRendered).filter(r => r).length;
 
-		if(renderCount === tweetIds.length) {
-			fullyRendered(true)
+		if (renderCount === tweetIds.length) {
+			fullyRendered(true);
 		} else {
-			fullyRendered(false)
+			fullyRendered(false);
 		}
 	}, [fullyRendered, tweetsRendered, tweetIds]);
 
-	return <ul className="list-unstyled">{
-		tweetIds.map((tweetId: string) =>
-			<li key={tweetId}>
-				<Tweet
-					key={tweetId}
-					tweetId={tweetId}
-					// TODO: find a way to cache the setRendered function for each individual Tweet
-					rendered={isRendered => setRendered(tweetId, isRendered)} />
-			</li>
-		)
-	}</ul>
-}
+	return (
+		<ul className="list-unstyled">
+			{tweetIds.map((tweetId: string) => (
+				<li key={tweetId}>
+					<Tweet
+						key={tweetId}
+						tweetId={tweetId}
+						// TODO: find a way to cache the setRendered function for each individual Tweet
+						rendered={isRendered => setRendered(tweetId, isRendered)}
+					/>
+				</li>
+			))}
+		</ul>
+	);
+};
 
 export default TweetList;

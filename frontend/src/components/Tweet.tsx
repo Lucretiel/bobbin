@@ -8,7 +8,7 @@
 
 import React from "react";
 
-import twttr from '../twitter'
+import twttr from "../twitter";
 
 const EmbeddedTweet: React.FC<{
 	tweetId: string;
