@@ -10,7 +10,7 @@ import React from "react";
 
 import twttr from "../twitter";
 
-const EmbeddedTweet: React.FC<{
+const Tweet: React.FC<{
 	tweetId: string;
 	rendered: (isRendered: boolean) => void;
 }> = ({ tweetId, rendered }) => {
@@ -54,4 +54,4 @@ const EmbeddedTweet: React.FC<{
 	return <div key={tweetId} className="tweet-container" ref={setNode} />;
 };
 
-export default EmbeddedTweet;
+export default Tweet;
