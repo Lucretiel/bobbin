@@ -1,0 +1,79 @@
+{{ define base -}}
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		  <!-- Global site tag (gtag.js) - Google Analytics -->
+	    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-137610560-1"></script>
+	    <script>
+	      window.dataLayer = window.dataLayer || [];
+	      function gtag() {
+	        dataLayer.push(arguments);
+	      }
+	      gtag("js", new Date());
+
+	      gtag("config", "UA-137610560-1");
+	    </script>
+
+	    <!-- Bulma.css -->
+	    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css" integrity="sha256-D9M5yrVDqFlla7nlELDaYZIpXfFWDytQtiV+TaH6F1I=" crossorigin="anonymous">
+
+	    <!-- Fontawesome Icons -->
+	    <script async src="https://kit.fontawesome.com/b87d42a080.js" crossorigin="anonymous" integrity="sha384-UdpHCem4w80yqoCTCDLtvOJT3Yec4CxPIPhk9gX+U6k9hxwUm8+ZhbNalCuJsaDX"></script>
+
+	    <!-- Parsley js -->
+	    <script async src="https://cdnjs.cloudflare.com/ajax/libs/parsley.js/2.9.1/parsley.min.js" integrity="sha256-NIrmL5MpKPRrVKsHLnkWp5u4vNpVp2fKLoFOz96mHUY=" crossorigin="anonymous"></script>
+
+	    {{block "scripts" .}}{{end}}
+	    {{block "meta" .}}{{end}}
+
+	    <meta charset="utf-8" />
+	    <meta name="viewport" content="width=device-width, initial-scale=1" />
+	    <meta name="theme-color" content="#000000" />
+	    <title>{{block "title" .}}Bobbin{{end}}</title>
+		<title></title>
+	</head>
+	<body>
+		<div class="grow-main">
+			<nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+				<div class="container">
+					<div class="navbar-brand">
+						<a class="navbar-item" href="/">
+							<span class="logo">
+								<span class="logo-label">Bobbin</span>
+								<span class="beta-label">Beta 2</span>
+							</span>
+						</a>
+						<a type="button" role="button" class={burgerClass} id="navbar-collapse-button">
+							<span aria-hidden="true" />
+							<span aria-hidden="true" />
+							<span aria-hidden="true" />
+						</a>
+					</div>
+					<div class={menuClass} id="navbar-links">
+						<div class="navbar-start is-dark">
+							<
+							<a class="navbar-item" href="/">Home</a>
+							<a class="navbar-item" to="/faq">FAQ</a>
+						</div>
+					</div>
+				</div>
+			</nav>
+			<main>
+				{{- block "main" .}}{{end -}}
+			</main>
+			<footer class="footer is-dark">
+				<div class="container">
+					<span class="footer-item">
+						<a href="https://github.com/Lucretiel/bobbin">Github</a>
+					</span>
+					<span class="footer-item">
+						<a href="https://github.com/Lucretiel/bobbin/issues">
+							{"Issues & Feedback"}
+						</a>
+					</span>
+				</div>
+			</footer>
+		</div>
+	</body>
+	</html>
+{{- end}}

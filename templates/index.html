@@ -1,0 +1,33 @@
+{{template "base"}}
+
+{{define "title"}}Bobbin{{end}}
+
+{{define "main"}}
+	<section class="hero">
+		<div class="hero-body">
+			<div class="container">
+				<h1 class="title has-text-centered">Share threads with <strong>Bobbin</strong></h1>
+			</div>
+		</div>
+	</section>
+	<section class="section">
+		<div class="container">
+			<form id="tweet-entry-form">
+				<div class="field">
+					<div class="control">
+						<input type="text" class="input transition" placeholder="Link to last tweet in thread" value="">
+					</div>
+				</div>
+				<div class="field is-grouped is-grouped-centered">
+					<div class="control">
+						<button type="button" class="button is-info is-outlined transition">Help</button>
+					</div>
+					<div class="control">
+						<button class="button is-link transition is-primary is-outlined disabled" type="submit" disabled="">View Thread</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</section>
+{{end}}
+

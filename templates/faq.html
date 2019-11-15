@@ -1,0 +1,25 @@
+{{template "base"}}
+
+{{define "title"}}Bobbin FAQ{{end}}
+
+{{define "main"}}
+	<section class="section">
+		<div class="container" id="faq-content">
+			<h2 class="title">Frequently Asked Questions</h2>
+			<div class="content">
+				<dl>
+					{{range .}}
+						<dt class="faq-question" id="{{.Slug}}">
+							<strong>{{.Question}}</strong>
+							<a class="hoverlink" href="#{{.Slug}}">
+								<i class="fas fa-link"></i>
+							</a>
+						</dt>
+						<dd class="faq-answer">{{.Answer}}</dd>
+					{{end}}
+				</dl>
+			</div>
+		</div>
+	</section>
+{{end}}
+

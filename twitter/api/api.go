@@ -28,7 +28,18 @@ type Tweet struct {
 }
 
 type Tweets map[TweetId]Tweet
+
+func (t Tweets) Merge(incoming Tweets) {
+	for id, tweet := range incoming {
+		t[id] = tweet
+	}
+}
+
 type TweetIds map[TweetId]struct{}
+
+func SingleTweetId(id TweetId) TweetIds {
+	TweetIds{id: struct{}{}}
+}
 
 func GetTweets(
 	ctx context.Context,
@@ -112,6 +123,25 @@ func GetTweets(
 	}
 
 	return result, nil
+}
+
+func GetTweet(
+	ctx context.Context,
+	client *http.Client,
+	token auth.Token,
+	id TweetId,
+) (
+	Tweet, error,
+) {
+	tweets, err := GetTweets(ctx, client, token, Tweets{id: struct{}{}})
+	if err != nil {
+		return Tweet{}, err
+	}
+	tweet, ok := tweets[id]
+	if !ok {
+		return Tweet{}, fmt.Errorf("Couldn't find tweet with id %v", id)
+	}
+	return tweet, nil
 }
 
 func GetUserTweets(
