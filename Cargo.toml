@@ -11,3 +11,5 @@ reqwest = { version = "0.10.1", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 warp = "0.2.1"
 joinery = "2.0.0"
+futures = "0.3.1"
+lazy_static = "1.4.0"

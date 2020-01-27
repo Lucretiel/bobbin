@@ -1,8 +1,10 @@
 //! Simple methods for fetching tweets from the twitter API.
 
 use std::collections::hash_map::{Entry, HashMap};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use dataloader::{BatchFn, BatchFuture, Loader};
+use futures::future::{self, FutureExt, TryFutureExt};
 use joinery::prelude::*;
 use joinery::separators::Comma;
 use reqwest;
@@ -92,16 +94,47 @@ pub trait Token {
     fn apply(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
 }
 
+/// A dataloader implementation for twitter
+#[derive(Debug)]
+pub struct TweetLoader<'a, T> {
+    token: &'a T,
+    client: &'a reqwest::Client,
+}
+
+impl<'a, T: Token + Clone + Sync + Send> BatchFn<TweetId, Option<Tweet>> for TweetLoader<'a, T> {
+    type Error = reqwest::Error;
+
+    #[inline(always)]
+    fn max_batch_size(&self) -> usize {
+        100
+    }
+
+    fn load(&self, tweet_ids: &[TweetId]) -> BatchFuture<Option<Tweet>, reqwest::Error> {
+        load_tweets(self.client.clone(), self.token.clone(), tweet_ids).boxed()
+    }
+}
+
+/// Same as get_tweets, but adapted for the DataLoader interface.
+async fn load_tweets(
+    client: reqwest::Client,
+    token: impl Token,
+    tweet_ids: &[TweetId],
+) -> Result<Vec<Option<Tweet>>, reqwest::Error> {
+    let tweets = get_tweets(&client, &token, tweet_ids).await?;
+    Ok(tweet_ids.iter().map(move |id| tweets.remove(id)).collect())
+}
+
 const LOOKUP_TWEETS_URL: &'static str = "https://api.twitter.com/1.1/statuses/lookup";
 
 /// Fetch a bunch of tweets with /statuses/lookup. Note that this only
-/// fetches the first 100 tweets in the iterator; be sure to make multiple
-/// calls if necessary.
+/// fetches the first 100 tweets in the slice, and silently drops the rest;
+/// be sure to make multiple calls if necessary. Prefer get_many_tweets,
+/// which doesn't have this limitation.
 pub async fn get_tweets(
     client: &reqwest::Client,
     token: &impl Token,
-    tweets: impl Iterator<Item = TweetId> + Clone,
-) -> Result<Vec<Tweet>, reqwest::Error> {
+    tweet_ids: &[TweetId],
+) -> Result<HashMap<TweetId, Tweet>, reqwest::Error> {
     #[derive(Serialize)]
     struct Query {
         #[serde(rename = "id")]
@@ -113,7 +146,11 @@ pub async fn get_tweets(
     let request = client
         .get(LOOKUP_TWEETS_URL)
         .query(&Query {
-            id_list: tweets.take(100).map(|id| id.0).join_with(Comma).to_string(),
+            id_list: tweet_ids[..100]
+                .iter()
+                .map(|id| id.0)
+                .join_with(Comma)
+                .to_string(),
             trim_user: "false",
             include_entities: "false",
         })
@@ -139,6 +176,7 @@ pub async fn get_tweets(
                 }
             },
         })
+        .map(|tweet| (tweet.id, tweet))
         .collect();
 
     Ok(tweets)
