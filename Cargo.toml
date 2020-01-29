@@ -13,3 +13,5 @@ warp = "0.2.1"
 joinery = "2.0.0"
 futures = "0.3.1"
 lazy_static = "1.4.0"
+futures-timer = "3.0.0"
+# horrorshow, for HTML templates. Prefer this over maud, because maud allocates.

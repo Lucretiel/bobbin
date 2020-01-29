@@ -1,6 +1,9 @@
 //! A simple sleep timer. This timer is runtime agnostic; it users a single
 //! global background thread with a binary heap of wakers to wake tasks as
 //! needed.
+//!
+//! This is not currently used; I just don't want to delete the code until I
+//! can find somewhere for it to live.
 
 use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd, Reverse};
 use std::collections::BinaryHeap;
@@ -115,12 +118,25 @@ fn global_schedule(wake_at: Instant, waker: Weak<Waker>) {
         static ref ALARM_CLOCK: Condvar = Condvar::new();
     }
 
+    let is_new_earliest = {
+        let mut locked_sleepers = SLEEPERS.lock().unwrap();
+        locked_sleepers.add(SleepingTask { wake_at, waker })
+    };
+
+    // Only need to notify if the sleep timer changed.
+    if is_new_earliest {
+        ALARM_CLOCK.notify_one();
+    }
+
     // The first time global_schedule, we spawn the thread that listens for
     // scheduled sleepers and awakens them as necessary.
     static SPAWN_THREAD: Once = Once::new();
 
     // There's no way to stop this thread once it's started. We just let it
     // die when main returns.
+    // TODO: The other way to implement this is to let the thread die when
+    // SLEEPERS is empty, and spawn a new one every time it goes from empty to
+    // not empty. This way is probably better, though.
     SPAWN_THREAD.call_once(|| {
         thread::spawn(|| {
             let mut locked_sleepers = SLEEPERS.lock().unwrap();
@@ -144,22 +160,24 @@ fn global_schedule(wake_at: Instant, waker: Weak<Waker>) {
             }
         });
     });
-
-    let is_new_earliest = {
-        let mut locked_sleepers = SLEEPERS.lock().unwrap();
-        locked_sleepers.add(SleepingTask { wake_at, waker })
-    };
-
-    // Only need to notify if the sleep timer changed.
-    if is_new_earliest {
-        ALARM_CLOCK.notify_one();
-    }
 }
 
 #[derive(Debug, Clone)]
 pub struct SleepUntil {
     wake_at: Instant,
     waker: Option<Arc<Waker>>,
+}
+
+impl SleepUntil {
+    #[inline]
+    fn when(&self) -> &Instant {
+        self.wake_at,
+    }
+
+    #[inline]
+    fn remaining(&self) -> Duration {
+        self.wake_at - Instant::now()
+    }
 }
 
 impl Future for SleepUntil {
