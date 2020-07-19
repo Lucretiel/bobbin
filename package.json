@@ -24,7 +24,7 @@
     "lodash": "^4.17.19",
     "prop-types": "^15.6.0",
     "react": "^16.0.0",
-    "react-dom": "^16.0.0",
+    "react-dom": "^16.2.1",
     "react-router-dom": "^4.2.2",
     "style-loader": "^0.18.2",
     "webpack": "^3.6.0",
