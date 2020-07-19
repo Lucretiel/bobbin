@@ -1,20 +1,23 @@
 //! Simple methods for fetching tweets from the twitter API.
 
-use std::collections::hash_map::{Entry, HashMap};
-use std::sync::{Arc, Mutex};
+pub mod auth;
 
-use dataloader::{BatchFn, BatchFuture, Loader};
-use futures::future::{self, FutureExt, TryFutureExt};
+use std::collections::hash_map::{Entry, HashMap};
+use std::fmt::Write;
+use std::sync::Arc;
+
 use joinery::prelude::*;
 use joinery::separators::Comma;
 use reqwest;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct TweetId(i64);
+use auth::Token;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct UserId(i64);
+pub struct TweetId(u64);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct UserId(u64);
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct User {
@@ -27,7 +30,7 @@ pub struct User {
     handle: String,
 }
 
-/// Helper struct for normalizing / decuplicating User objects
+/// Helper struct for normalizing / deduplicating User objects
 #[derive(Debug, Default)]
 struct UserTable {
     table: HashMap<UserId, Arc<User>>,
@@ -65,8 +68,8 @@ impl UserTable {
 
 #[derive(Debug, Clone)]
 pub struct ReplyInfo {
-    id: TweetId,
-    author: UserId,
+    pub id: TweetId,
+    pub author: UserId,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +77,22 @@ pub struct Tweet {
     pub id: TweetId,
     pub author: Arc<User>,
     pub reply: Option<ReplyInfo>,
+}
+
+impl Tweet {
+    fn from_raw_tweet(raw: RawTweet, user_table: &mut UserTable) -> Self {
+        Self {
+            id: raw.id,
+            reply: match (raw.reply_id, raw.reply_author_id) {
+                (None, None) => None,
+                (Some(id), Some(author)) => Some(ReplyInfo { id, author }),
+                _ => {
+                    panic!("invalid response from twitter API: had a reply author but no reply id")
+                }
+            },
+            author: user_table.get_user(raw.author),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -90,50 +109,15 @@ struct RawTweet {
     pub reply_author_id: Option<UserId>,
 }
 
-pub trait Token {
-    fn apply(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
-}
-
-/// A dataloader implementation for twitter
-#[derive(Debug)]
-pub struct TweetLoader<'a, T> {
-    token: &'a T,
-    client: &'a reqwest::Client,
-}
-
-impl<'a, T: Token + Clone + Sync + Send> BatchFn<TweetId, Option<Tweet>> for TweetLoader<'a, T> {
-    type Error = reqwest::Error;
-
-    #[inline(always)]
-    fn max_batch_size(&self) -> usize {
-        100
-    }
-
-    fn load(&self, tweet_ids: &[TweetId]) -> BatchFuture<Option<Tweet>, reqwest::Error> {
-        load_tweets(self.client.clone(), self.token.clone(), tweet_ids).boxed()
-    }
-}
-
-/// Same as get_tweets, but adapted for the DataLoader interface.
-async fn load_tweets(
-    client: reqwest::Client,
-    token: impl Token,
-    tweet_ids: &[TweetId],
-) -> Result<Vec<Option<Tweet>>, reqwest::Error> {
-    let tweets = get_tweets(&client, &token, tweet_ids).await?;
-    Ok(tweet_ids.iter().map(move |id| tweets.remove(id)).collect())
-}
-
 const LOOKUP_TWEETS_URL: &'static str = "https://api.twitter.com/1.1/statuses/lookup";
 
 /// Fetch a bunch of tweets with /statuses/lookup. Note that this only
-/// fetches the first 100 tweets in the slice, and silently drops the rest;
-/// be sure to make multiple calls if necessary. Prefer get_many_tweets,
-/// which doesn't have this limitation.
+/// fetches the first 100 tweets in the list, and silently drops the rest;
+/// be sure to make multiple calls if necessary.
 pub async fn get_tweets(
     client: &reqwest::Client,
     token: &impl Token,
-    tweet_ids: &[TweetId],
+    tweet_ids: impl IntoIterator<Item = TweetId>,
 ) -> Result<HashMap<TweetId, Tweet>, reqwest::Error> {
     #[derive(Serialize)]
     struct Query {
@@ -143,14 +127,21 @@ pub async fn get_tweets(
         include_entities: &'static str,
     }
 
+    let id_list = tweet_ids
+        .into_iter()
+        .take(100)
+        .map(|id| id.0)
+        .iter_join_with(Comma)
+        .fold(String::new(), |mut id_list, item| {
+            // Unwrap is fine here because write! to a String is infallible
+            write!(&mut id_list, "{}", item).unwrap();
+            id_list
+        });
+
     let request = client
         .get(LOOKUP_TWEETS_URL)
         .query(&Query {
-            id_list: tweet_ids[..100]
-                .iter()
-                .map(|id| id.0)
-                .join_with(Comma)
-                .to_string(),
+            id_list,
             trim_user: "false",
             include_entities: "false",
         })
@@ -164,22 +155,22 @@ pub async fn get_tweets(
 
     let tweets = response_tweets
         .into_iter()
-        .map(move |raw_tweet| Tweet {
-            id: raw_tweet.id,
-            author: user_table.get_user(raw_tweet.author),
-            reply: match (raw_tweet.reply_id, raw_tweet.reply_author_id) {
-                (Some(id), Some(author)) => Some(ReplyInfo { id, author }),
-                (None, None) => None,
-                // TODO: don't panic
-                _ => {
-                    panic!("invalid response from twitter API: had a reply author but no reply id")
-                }
-            },
-        })
+        .map(move |raw| Tweet::from_raw_tweet(raw, &mut user_table))
         .map(|tweet| (tweet.id, tweet))
         .collect();
 
     Ok(tweets)
+}
+
+pub async fn get_tweet(
+    client: &reqwest::Client,
+    token: &impl Token,
+    tweet_id: TweetId,
+) -> Result<Option<Tweet>, reqwest::Error> {
+    // TODO: Replace this with a dataloader
+    get_tweets(client, token, Some(tweet_id))
+        .await
+        .map(|tweets| tweets.get(&tweet_id).cloned())
 }
 
 const USER_TIMELINE_URL: &'static str = "https://api.twitter.com/1.1/statuses/user_timeline";
@@ -220,18 +211,7 @@ pub async fn get_user_tweets(
 
     let tweets = response_tweets
         .into_iter()
-        .map(move |raw_tweet| Tweet {
-            id: raw_tweet.id,
-            author: user_table.get_user(raw_tweet.author),
-            reply: match (raw_tweet.reply_id, raw_tweet.reply_author_id) {
-                (Some(id), Some(author)) => Some(ReplyInfo { id, author }),
-                (None, None) => None,
-                // TODO: don't panic
-                _ => {
-                    panic!("invalid response from twitter API: had a reply author but no reply id")
-                }
-            },
-        })
+        .map(move |raw| Tweet::from_raw_tweet(raw, &mut user_table))
         .collect();
 
     Ok(tweets)
