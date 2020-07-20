@@ -1,4 +1,3 @@
-mod thread;
 mod twitter;
 mod views;
 

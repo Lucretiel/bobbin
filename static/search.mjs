@@ -2,7 +2,7 @@
  * Script related to running & styling the search bar
  */
 
-import { whenReady, classNames } from "./common.mjs"
+import { whenReady, classNames, requireChanged } from "./common.mjs"
 
 whenReady(() => {
     const tweetRegex = /^\s*(?:(?:https?:\/\/)?(?:(?:www|mobile)\.)?twitter\.com\/\w+\/status\/)?(\d{1,24})(?:[?#]\S*)?\s*$/;
@@ -16,9 +16,7 @@ whenReady(() => {
         return match == null ? null : match[1];
     }
 
-    // This function is run every time the text changes. We also
-    // run it immediately right now, to ensure we're in a consistent state.
-    const update = searchText => {
+    const update = requireChanged(searchText => {
         const tweetId = extractTweetId(searchText);
         const isEmpty = searchText === "";
         const isValid = tweetId != null;
@@ -55,7 +53,7 @@ whenReady(() => {
             threadButton.removeAttribute("href");
             threadButton.setAttribute("disabled", true)
         }
-    }
+    });
 
     textField.addEventListener("input", event => {
         // TODO: filter for text changes only.

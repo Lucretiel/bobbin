@@ -1,6 +1,7 @@
 //! Simple methods for fetching tweets from the twitter API.
 
 pub mod auth;
+pub mod thread;
 
 use std::collections::hash_map::{Entry, HashMap};
 use std::fmt::Write;

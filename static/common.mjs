@@ -28,3 +28,20 @@ export const whenReady = func => {
         setTimeout(run, 0);
     }
 }
+
+// Decorator for a single-argument function that causes
+// it to only be called if the argument changed.
+export const requireChanged = func => {
+    let lastSeen = Symbol();
+    let lastReturn = null;
+
+    return arg => {
+        if (lastSeen !== arg) {
+            lastSeen = arg;
+            lastReturn = func(arg);
+            return lastReturn;
+        } else {
+            return lastReturn;
+        }
+    }
+}
