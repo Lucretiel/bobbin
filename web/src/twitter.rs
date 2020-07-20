@@ -4,7 +4,7 @@ pub mod auth;
 pub mod thread;
 
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt::Write;
+use std::fmt::{self, Display, Formatter, Write};
 use std::sync::Arc;
 
 use joinery::prelude::*;
@@ -14,21 +14,44 @@ use serde::{Deserialize, Serialize};
 
 use auth::Token;
 
+// TODO: use more `Raw` types to firmly establish a construction boundary;
+// only this module may create UserHandle, TweetId, etc
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TweetId(u64);
+
+impl TweetId {
+    pub fn as_int(&self) -> u64 {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct UserId(u64);
 
+impl UserId {
+    pub fn as_int(&self) -> u64 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct UserHandle(String);
+
+impl AsRef<str> for UserHandle {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct User {
-    id: UserId,
+    pub id: UserId,
 
     #[serde(rename = "name")]
-    display_name: String,
+    pub display_name: String,
 
     #[serde(rename = "screen_name")]
-    handle: String,
+    pub handle: UserHandle,
 }
 
 /// Helper struct for normalizing / deduplicating User objects

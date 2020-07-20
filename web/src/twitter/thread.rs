@@ -9,7 +9,7 @@ pub enum ThreadItem {
 }
 
 impl ThreadItem {
-    fn tweet_id(&self) -> TweetId {
+    pub fn tweet_id(&self) -> TweetId {
         match *self {
             ThreadItem::TweetId(id) => id,
             ThreadItem::Missing(id) => id,

@@ -23,14 +23,12 @@ struct Args {
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) {
-    let root = warp::path::end().map(|| {
-        let content = views::home().into_string().unwrap();
-        warp::reply::html(content)
-    });
-    let faq = warp::path!("faq").map(|| {
-        let content = views::faq().into_string().unwrap();
-        warp::reply::html(content)
-    });
+    // Pre-render the pages that never change
+    let home: &'static str = Box::leak(Box::new(views::home().into_string().unwrap())).as_str();
+    let faq: &'static str = Box::leak(Box::new(views::faq().into_string().unwrap())).as_str();
+
+    let root = warp::path::end().map(move || warp::reply::html(home));
+    let faq = warp::path!("faq").map(move || warp::reply::html(faq));
     let static_files = warp::path!("static" / ..).and(warp::fs::dir(args.static_dir));
 
     let service = root.or(faq).or(static_files);
