@@ -95,7 +95,7 @@ pub async fn generate_bearer_token(
 }
 
 #[derive(Debug, Clone)]
-struct BearerToken {
+pub struct BearerToken {
     token: secrecy::SecretString,
 }
 

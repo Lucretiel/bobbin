@@ -1,0 +1,12 @@
+#faq-content {
+  max-width: 50em;
+}
+
+a.hoverlink {
+  visibility: hidden;
+  padding: 0 4pt;
+}
+
+*:hover > a.hoverlink {
+  visibility: visible;
+}
