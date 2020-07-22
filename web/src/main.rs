@@ -24,22 +24,27 @@ struct Args {
     static_dir: PathBuf,
 }
 
-fn make_reject<T>(_: T) -> warp::Rejection {
-    warp::reject::reject()
-}
-
 /// Tokio's proc macro #[tokio::main] substantially obfuscates errors in main,
 /// so we have this be the actual main function and `main` just awaits it
 async fn run(args: Args) {
-    // Pre-render the pages that never change
-    let home: &'static str = Box::leak(Box::new(views::home().into_string().unwrap())).as_str();
-    let faq: &'static str = Box::leak(Box::new(views::faq().into_string().unwrap())).as_str();
+    // Pre-render the pages that never change.
+    let home: &str = Box::leak(views::home().into_string().unwrap().into_boxed_str());
+    let faq: &str = Box::leak(views::faq().into_string().unwrap().into_boxed_str());
 
     // Create a rewest client for making API calls
     let http_client = reqwest::Client::builder().build().unwrap();
 
+    // Route: /
     let root = warp::path::end().map(move || warp::reply::html(home));
+
+    // Route: /faq
     let faq = warp::path!("faq").map(move || warp::reply::html(faq));
+
+    // Route: /thread/{thread_id}
+    // TODO: How much of this should be part of the view? Probably the view
+    // should return an HTTP response, and the closure should take care of
+    // gathering the client, tweet ID, etc. While we're at it, the other views
+    // should return an http::response too.
     let thread = warp::path!("thread" / u64).and_then(move |tweet_id| {
         let client = http_client.clone();
         async move {
@@ -64,6 +69,7 @@ async fn run(args: Args) {
         }
     });
 
+    // Route: /static/...
     let static_files = warp::path!("static" / ..).and(warp::fs::dir(args.static_dir));
 
     let service = root.or(faq).or(thread).or(static_files);
