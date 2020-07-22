@@ -47,28 +47,49 @@ impl RenderOnce for Stylesheet {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Module {
-    pub src: &'static str,
+pub enum Script {
+    Script {
+        src: &'static str,
+        asinc: bool,
+        defer: bool,
+    },
+    Module {
+        src: &'static str,
+    },
 }
 
-impl Render for Module {
+impl Render for Script {
     fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
-        tmpl << html! {
-            script(
-                src = self.src,
-                type = "module"
-            )
+        match *self {
+            Script::Script { src, asinc, defer } => {
+                tmpl << html! {
+                    script(
+                        src = src,
+                        async ?= asinc,
+                        defer ?= defer,
+                        charset = "utf-8"
+                    )
+                }
+            }
+            Script::Module { src } => {
+                tmpl << html! {
+                       script(
+                           src = src,
+                           type = "module"
+                       )
+                }
+            }
         }
     }
 }
 
-impl RenderMut for Module {
+impl RenderMut for Script {
     fn render_mut<'a>(&mut self, tmpl: &mut TemplateBuffer<'a>) {
         self.render(tmpl)
     }
 }
 
-impl RenderOnce for Module {
+impl RenderOnce for Script {
     fn render_once(self, tmpl: &mut TemplateBuffer<'_>)
     where
         Self: Sized,

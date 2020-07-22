@@ -1,32 +1,34 @@
+use super::{base::base_template, shared::Script, Stylesheet};
 use crate::twitter::{
-    thread::{get_thread, ThreadItem},
-    TweetId, User,
+    thread::{example_thread, get_thread, Thread, ThreadAuthor, ThreadItem},
+    TweetId, User, UserHandle,
 };
 
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
 use horrorshow::{html, owned_html, prelude::*};
+use lazy_format::lazy_format;
 use reqwest;
 
 #[derive(Debug, Clone)]
-enum ThreadHeader {
-    Conversation,
-    Authored(Arc<User>),
+struct ThreadHeader<'a> {
+    author: &'a ThreadAuthor,
 }
 
-impl Render for ThreadHeader {
+impl Render for ThreadHeader<'_> {
     fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
-        match self {
-            ThreadHeader::Conversation => {
+        match self.author {
+            ThreadAuthor::Conversation => {
                 tmpl << html! {
-                    h3: "Conversation";
+                    h3(class="author-header"): "Conversation";
                 }
             }
-            ThreadHeader::Authored(author) => {
+            ThreadAuthor::Author(author) => {
                 let handle = author.handle.as_ref();
+                let author_url = lazy_format!("https://twitter.com/{}", handle);
                 tmpl << html! {
                     a(
-                        href=format_args!("https://twitter/com/{}", handle),
+                        href=author_url,
                         target="_blank"
                     ) {
                         h3(class="author-header") {
@@ -46,13 +48,49 @@ impl Render for ThreadHeader {
     }
 }
 
-impl RenderMut for ThreadHeader {
+impl RenderMut for ThreadHeader<'_> {
     fn render_mut<'a>(&mut self, tmpl: &mut TemplateBuffer<'a>) {
         self.render(tmpl)
     }
 }
 
-impl RenderOnce for ThreadHeader {
+impl RenderOnce for ThreadHeader<'_> {
+    fn render_once(self, tmpl: &mut TemplateBuffer<'_>)
+    where
+        Self: Sized,
+    {
+        self.render(tmpl)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TweetStub {
+    id: TweetId,
+}
+
+impl Render for TweetStub {
+    fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
+        let url = lazy_format!("https://twitter.com/someone/status/{}", self.id.as_int());
+
+        tmpl << html! {
+            div(class="tweet-container") {
+                // This is a hack on the standard twitter embed widget. In the
+                // future we'll do this with javascript
+                blockquote(class="twitter-tweet", data-conversation="none") {
+                    a(href=url)
+                }
+            }
+        }
+    }
+}
+
+impl RenderMut for TweetStub {
+    fn render_mut<'a>(&mut self, tmpl: &mut TemplateBuffer<'a>) {
+        self.render(tmpl)
+    }
+}
+
+impl RenderOnce for TweetStub {
     fn render_once(self, tmpl: &mut TemplateBuffer<'_>)
     where
         Self: Sized,
@@ -63,40 +101,48 @@ impl RenderOnce for ThreadHeader {
 
 /// The synchronous part of building a thread; once we have all the twitter
 /// ids and an author, render to HTML
-fn render_thread(
-    thread: impl IntoIterator<Item = ThreadItem>,
-    header: ThreadHeader,
-) -> impl Template {
-    let thread_items = thread.into_iter();
+fn render_thread(thread: Thread) -> impl Template {
+    let title = match thread.author() {
+        ThreadAuthor::Author(author) => format!("Thread by {} on Bobbin", author.display_name),
+        ThreadAuthor::Conversation => format!("Twitter conversation on Bobbin"),
+    };
 
-    owned_html! {
+    let twitter_js = Some(Script::Script {
+        src: "https://platform.twitter.com/widgets.js",
+        asinc: true,
+        defer: false,
+    });
+
+    let thread_css = Some(Stylesheet::new("/static/thread.css"));
+
+    let content = owned_html! {
+        script(src="https://platform.twitter.com/widgets.js", charset="utf-8", async);
         div(class="container") {
-            div(class="row") {
-                div(class="col text-center") {
-                    : header;
+            div(class="columns") {
+                div(class="column has-text-centered") {
+                    : ThreadHeader{ author: thread.author() };
                 }
             }
-            div(class="row justify-content-center") {
-                div(class="col") {
-                    ul(class="list-unstyled") {
-                        @ for tweet in thread_items {
-                            blockquote(class="twitter-tweet", data-theme="light") {
-                                a(href=format_args!("https://twitter.com/someone/{}", tweet.tweet_id().as_int()))
-                            }
+            div(class="columns") {
+                div(class="column") {
+                    div(class="tweet-list") {
+                        @ for item in thread.items() {
+                            : TweetStub { id: item.tweet_id() };
                         }
                     }
                 }
             }
         }
-    }
+    };
+
+    base_template(title, thread_css, twitter_js, content)
 }
 
-/*
 pub async fn thread(
     client: &reqwest::Client,
     tail: TweetId,
     head: Option<TweetId>,
-) -> impl Template {
-    panic!()
+) -> reqwest::Result<String> {
+    let thread = example_thread();
+    Ok(render_thread(thread).into_string().unwrap())
 }
-*/

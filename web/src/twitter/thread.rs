@@ -1,37 +1,53 @@
-use std::collections::HashMap;
-
 use crate::twitter::{self, auth::Token, Tweet, TweetId};
+
+use std::{cmp, collections::HashMap, sync::Arc};
+
+use twitter::{User, UserId};
 
 #[derive(Debug, Clone)]
 pub enum ThreadItem {
-    TweetId(TweetId),
     Missing(TweetId),
+    Tweet(Tweet),
 }
 
 impl ThreadItem {
     pub fn tweet_id(&self) -> TweetId {
         match *self {
-            ThreadItem::TweetId(id) => id,
             ThreadItem::Missing(id) => id,
+            ThreadItem::Tweet(ref tweet) => tweet.id,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ThreadAuthor {
+    Author(Arc<User>),
+    Conversation,
+}
+
+#[derive(Debug, Clone)]
+pub struct Thread {
+    items: Vec<ThreadItem>,
+    author: ThreadAuthor,
+}
+
+impl Thread {
+    pub fn items(&self) -> &[ThreadItem] {
+        &self.items
+    }
+
+    pub fn author(&self) -> &ThreadAuthor {
+        &self.author
     }
 }
 
 #[derive(Debug, Clone)]
 enum TweetLookupResult {
     FoundTweet(Tweet),
-    //CacheHit(Tweet),  // TODO: Add me with Redis
     MissingTweet(TweetId),
 }
 
 impl TweetLookupResult {
-    fn thread_item(&self) -> ThreadItem {
-        match *self {
-            TweetLookupResult::MissingTweet(tweet_id) => ThreadItem::Missing(tweet_id),
-            TweetLookupResult::FoundTweet(ref tweet) => ThreadItem::TweetId(tweet.id),
-        }
-    }
-
     fn previous_tweet_id(&self) -> Option<TweetId> {
         match *self {
             TweetLookupResult::MissingTweet(..) => None,
@@ -45,7 +61,7 @@ pub async fn get_thread(
     token: &impl Token,
     tail: TweetId,
     head: Option<TweetId>,
-) -> reqwest::Result<Vec<ThreadItem>> {
+) -> reqwest::Result<Thread> {
     // Threads are constructed from back to front; thread is populated,
     // then reversed
     let mut thread: Vec<ThreadItem> = Vec::new();
@@ -54,9 +70,6 @@ pub async fn get_thread(
     // fetch tweet author timelines, under the assumption that tweets made
     // near the same time as this one are probably part of the thread. The
     // results of those cache lookups are stored here.
-    // Because we don't know which of those tweets are actually part of the
-    // thread, and we don't want to cache too aggresively, we don't move these
-    // to a permanent cache (redis) until we discover that they're part of
     let mut tweet_box: HashMap<TweetId, Tweet> = HashMap::new();
 
     let mut current_tweet_id = tail;
@@ -89,18 +102,79 @@ pub async fn get_thread(
             },
         };
 
-        thread.push(tweet.thread_item());
-
-        if head == Some(current_tweet_id) {
-            break;
-        }
-
         match tweet.previous_tweet_id() {
             Some(prev_id) => current_tweet_id = prev_id,
             None => break,
         }
+
+        thread.push(match tweet {
+            TweetLookupResult::FoundTweet(tweet) => ThreadItem::Tweet(tweet),
+            TweetLookupResult::MissingTweet(id) => ThreadItem::Missing(id),
+        });
+
+        if head == Some(current_tweet_id) {
+            break;
+        }
     }
 
     thread.reverse();
-    Ok(thread)
+
+    let author = thread_author(thread.iter().filter_map(|item| match item {
+        ThreadItem::Tweet(tweet) => Some(&tweet.author),
+        _ => None,
+    }));
+
+    Ok(Thread {
+        items: thread,
+        author,
+    })
+}
+
+fn thread_author<'a>(authors: impl IntoIterator<Item = &'a Arc<User>>) -> ThreadAuthor {
+    struct Entry<'a> {
+        pub count: usize,
+        pub author: &'a Arc<User>,
+    }
+
+    let mut counter: HashMap<UserId, Entry> = HashMap::new();
+
+    authors.into_iter().for_each(|author| {
+        counter
+            .entry(author.id)
+            .and_modify(|entry| entry.count += 1)
+            .or_insert(Entry { count: 1, author });
+    });
+
+    let mut counted: Vec<&Entry> = counter.values().collect();
+    counted.sort_unstable_by_key(|entry| cmp::Reverse(entry.count));
+
+    match counted.get(0) {
+        // If there's no one, it's a conversation
+        None => ThreadAuthor::Conversation,
+
+        // `most` is the user with the most tweets in this thread
+        Some(most) => match counted.get(1) {
+            // If they're the only user in the thread, they're the author
+            None => ThreadAuthor::Author(most.author.clone()),
+
+            // If they don't have a unique plurality of tweets, it's a conversation
+            Some(next) if next.count >= most.count => ThreadAuthor::Conversation,
+
+            // If the user has more tweets than there are people here, they're the author
+            Some(..) if most.count * 2 >= counted.len() => {
+                ThreadAuthor::Author(most.author.clone())
+            }
+
+            // Otherwise it's a conversation
+            _ => ThreadAuthor::Conversation,
+        },
+    }
+}
+
+pub fn example_thread() -> Thread {
+    let (user, tweets) = twitter::sample_thread();
+    Thread {
+        items: tweets.into_iter().map(ThreadItem::Tweet).collect(),
+        author: ThreadAuthor::Author(user),
+    }
 }

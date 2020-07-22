@@ -1,4 +1,4 @@
-//! Simple methods for fetching tweets from the twitter API.
+//! Simple methods for fe{ id: (), author: (), reply: ()}id: (), author: (), reply: ()}hing tweets from the twitter API.
 
 pub mod auth;
 pub mod thread;
@@ -22,6 +22,10 @@ pub struct TweetId(u64);
 impl TweetId {
     pub fn as_int(&self) -> u64 {
         self.0
+    }
+
+    pub fn new(id: u64) -> Self {
+        TweetId(id)
     }
 }
 
@@ -239,4 +243,42 @@ pub async fn get_user_tweets(
         .collect();
 
     Ok(tweets)
+}
+
+pub fn sample_thread() -> (Arc<User>, Vec<Tweet>) {
+    let userId = UserId(7909592);
+
+    let user = User {
+        id: userId,
+        display_name: "Lucretiel 🦀".to_string(),
+        handle: UserHandle("Lucretiel".to_string()),
+    };
+
+    let user = Arc::new(user);
+
+    let tweets = vec![
+        Tweet {
+            id: TweetId(1285393620091187200),
+            author: user.clone(),
+            reply: None,
+        },
+        Tweet {
+            id: TweetId(1285393916825665537),
+            author: user.clone(),
+            reply: Some(ReplyInfo {
+                id: TweetId(1285393620091187200),
+                author: userId,
+            }),
+        },
+        Tweet {
+            id: TweetId(1285394118508765184),
+            author: user.clone(),
+            reply: Some(ReplyInfo {
+                id: TweetId(1285393916825665537),
+                author: userId,
+            }),
+        },
+    ];
+
+    (user, tweets)
 }

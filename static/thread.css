@@ -1,0 +1,70 @@
+.author-header {
+  color: #212529;
+  font-size: 1.5rem;
+}
+
+.author-name {
+  font-weight: bold;
+  /*@extend .has-text-black-ter;*/
+}
+
+.author-handle {
+  font-size: 1.25rem;
+  color: #697882;
+  /* @extend .has-text-grey-light; */
+}
+
+.tweet-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tweet-container {
+  flex: 1;
+}
+
+.tweet-like {
+  /* Copied from the tweet style */
+  max-width: 500px;
+  min-width: 220px;
+}
+
+.thread-end {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* HORIZONTAL LINE AT THE BOTTOM OF THE THREAD */
+
+.strike {
+  display: block;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.strike > span {
+  position: relative;
+  display: inline-block;
+}
+
+.strike > span:before,
+.strike > span:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 9999px;
+  height: 1px;
+  background: lightgrey;
+}
+
+.strike > span:before {
+  right: 100%;
+  margin-right: 15px;
+}
+
+.strike > span:after {
+  left: 100%;
+  margin-left: 15px;
+}

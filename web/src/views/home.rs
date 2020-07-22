@@ -1,5 +1,5 @@
 use super::base::base_template;
-use super::shared::Module;
+use super::shared::Script;
 
 use horrorshow::owned_html;
 use horrorshow::prelude::*;
@@ -49,10 +49,10 @@ pub fn home() -> impl Template {
     };
 
     let scripts = [
-        Module {
+        Script::Module {
             src: "/static/search.mjs",
         },
-        Module {
+        Script::Module {
             src: "/static/help.mjs",
         },
     ]

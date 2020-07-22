@@ -106,7 +106,7 @@ pub fn faq() -> impl Template {
 
     base_template(
         "Bobbin FAQ",
-        iter::once(Stylesheet::new("/static/faq.css")),
+        Some(Stylesheet::new("/static/faq.css")),
         iter::empty(),
         owned_html! {
             section(class="section") {
