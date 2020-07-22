@@ -245,6 +245,13 @@ pub async fn get_user_tweets(
     Ok(tweets)
 }
 
+/*
+TODO:
+
+- Error code 401 unauthorized; make one (1) attempt to refresh the token.
+- Error code 420 or 429 rate limited: Page me
+*/
+
 pub fn sample_thread() -> (Arc<User>, Vec<Tweet>) {
     let userId = UserId(7909592);
 
