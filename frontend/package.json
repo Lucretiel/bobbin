@@ -1,0 +1,21 @@
+{
+  "name": "bobbin-frontend",
+  "version": "1.0.0",
+  "main": "sass/bobbin.scss",
+  "repository": "https://www.github.com/Lucretiel/bobbin",
+  "author": "Nathan West",
+  "license": "MPL-2.0",
+  "private": true,
+  "dependencies": {
+    "bulma": "^0.9.0",
+    "sass": "^1.26.10",
+    "typescript": "^3.9.7"
+  },
+  "scripts": {
+    "css-build-debug": "sass --load-path ./node_modules ./sass/:../static/css",
+    "css-build": "yarn run css-build-debug --style compressed --no-source-map",
+    "css-watch": "yarn run css-build --watch",
+    "js-build": "tsc",
+    "js-watch": "tsc --watch"
+  }
+}

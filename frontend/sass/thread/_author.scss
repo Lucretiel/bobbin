@@ -1,0 +1,16 @@
+@charset 'utf-8';
+@use "bulma/bulma.sass";
+
+.author-header {
+  font-size: 1.5rem;
+  @extend .has-text-black-ter;
+}
+
+.author-name {
+  font-weight: bold;
+}
+
+.author-handle {
+  font-size: 1.25rem;
+  @extend .has-text-grey-light;
+}
