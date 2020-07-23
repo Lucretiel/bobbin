@@ -6,18 +6,6 @@ use std::borrow::Cow;
 use horrorshow::owned_html;
 use horrorshow::prelude::*;
 
-const BULMA_CSS: Stylesheet = Stylesheet {
-    href: "https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css",
-    integrity: Some("sha512-ADrqa2PY1TZtb/MoLZIZu/Z/LlPaWQeDMBV73EMwjGam43/JJ5fqW38Rq8LJOVGCDfrJeOMS3Q/wRUVzW5DkjQ=="),
-    crossorigin: Some("anonymous"),
-};
-
-const FONTAWESOME: Stylesheet = Stylesheet {
-    href: "https://use.fontawesome.com/releases/v5.8.2/css/all.css",
-    integrity: Some("sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay"),
-    crossorigin: Some("anonymous"),
-};
-
 pub(super) fn base_template<'a>(
     title: impl Into<Cow<'static, str>>,
     css: impl IntoIterator<Item = Stylesheet>,
@@ -38,18 +26,9 @@ pub(super) fn base_template<'a>(
                 meta(charset="utf-8");
                 meta(name="viewport", content="width=device-width, initial-scale=1");
 
-                :BULMA_CSS;
-                :FONTAWESOME;
-
-                :Stylesheet::new("/static/base.css");
-
                 @ for css_item in css_items {
                     : css_item
                 }
-
-                :Script::Module {
-                    src: "/static/nav.mjs",
-                };
 
                 @ for script in scripts {
                     : script

@@ -1,5 +1,5 @@
 use super::base::base_template;
-use super::shared::Script;
+use super::{shared::Script, Stylesheet};
 
 use horrorshow::owned_html;
 use horrorshow::prelude::*;
@@ -48,16 +48,12 @@ pub fn home() -> impl Template {
         }
     };
 
-    let scripts = [
-        Script::Module {
-            src: "/static/search.mjs",
-        },
-        Script::Module {
-            src: "/static/help.mjs",
-        },
-    ]
-    .iter()
-    .copied();
-
-    base_template("Bobbin", iter::empty(), scripts, content)
+    base_template(
+        "Bobbin",
+        Some(Stylesheet::new("/static/css/index.css")),
+        Some(Script::Module {
+            src: "/static/js/search.js",
+        }),
+        content,
+    )
 }

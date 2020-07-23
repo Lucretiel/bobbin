@@ -107,14 +107,6 @@ fn render_thread(thread: Thread) -> impl Template {
         ThreadAuthor::Conversation => format!("Twitter conversation on Bobbin"),
     };
 
-    let twitter_js = Some(Script::Script {
-        src: "https://platform.twitter.com/widgets.js",
-        asinc: true,
-        defer: false,
-    });
-
-    let thread_css = Some(Stylesheet::new("/static/thread.css"));
-
     let content = owned_html! {
         script(src="https://platform.twitter.com/widgets.js", charset="utf-8", async);
         div(class="container") {
@@ -135,7 +127,16 @@ fn render_thread(thread: Thread) -> impl Template {
         }
     };
 
-    base_template(title, thread_css, twitter_js, content)
+    base_template(
+        title,
+        Some(Stylesheet::new("/static/css/thread.css")),
+        Some(Script::Script {
+            src: "https://platform.twitter.com/widgets.js",
+            asinc: true,
+            defer: false,
+        }),
+        content,
+    )
 }
 
 pub async fn thread(
