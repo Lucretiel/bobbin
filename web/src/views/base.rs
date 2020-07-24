@@ -30,6 +30,20 @@ pub(super) fn base_template<'a>(
                     : css_item
                 }
 
+                : Script::Script {
+                    src: "/static/js/common.js",
+                    asinc: true,
+                    defer: false,
+                };
+
+                : Script::Script {
+                    src: "/static/js/nav.js",
+                    asinc: true,
+                    defer: false,
+                };
+
+
+
                 @ for script in scripts {
                     : script
                 }

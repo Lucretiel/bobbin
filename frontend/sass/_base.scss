@@ -1,2 +1,38 @@
 @charset "utf-8";
-@import "bulma/bulma.sass";
+@use "bulma/bulma.sass";
+@use "@fortawesome/fontawesome-free/css/all.css";
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.grow-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.grow-main main {
+  flex: 1;
+}
+
+.logo {
+  font-size: 1.4em;
+}
+
+.beta-label {
+  margin-left: 0.5rem;
+  font-size: 0.9em;
+  font-weight: lighter;
+}
+
+.footer-item {
+  padding: 0.5rem 1rem;
+}
+
+.transition {
+  transition: 300ms;
+}

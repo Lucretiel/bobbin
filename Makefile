@@ -1,3 +1,5 @@
+# TODO: Add debug / prod modes. For now we default to prod.
+
 YARN = yarn --cwd frontend
 
 all: js css web
@@ -15,7 +17,7 @@ static/css: frontend/node_modules $(shell find frontend/sass -type f)
 	touch -m $@
 
 static/js: frontend/node_modules $(shell find frontend/src -type f) frontend/tsconfig.json
-	$(YARN) run js-build
+	$(YARN) run webpack --prod
 	touch -m $@
 
 web/target/debug/bobbin: $(shell find web/src -type f) web/Cargo.toml web/Cargo.lock
@@ -24,4 +26,21 @@ web/target/debug/bobbin: $(shell find web/src -type f) web/Cargo.toml web/Cargo.
 web/target/release/bobbin: $(shell find web/src -type f) web/Cargo.toml web/Cargo.lock
 	cd web && cargo build --release
 
-.PHONY: all css js web
+clean-web:
+	cd web && cargo clean
+
+clean-css:
+	rm -rf static/css
+
+clean-js:
+	rm -rf static/js
+
+clean-static:
+	rm -rf static
+
+clean-node-modules:
+	rm -rf frontend/node_modules
+
+clean-all: clean-web clean-static clean-node-modules
+
+.PHONY: all css js web clean clean-web clean-css clean-js clean-static clean-node-modules
