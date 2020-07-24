@@ -1,6 +1,7 @@
-# TODO: Add debug / prod modes. For now we default to prod.
-
-YARN = yarn --cwd frontend
+# TODO: Add debug / prod modes. For now we default to debug.
+# Open problem to solve: when we switch to production mode, make doesn't
+# realize anything has changed, because the dependency chains are still fine.
+# Maybe separate directories for dev and prod output?
 
 all: js css web
 
@@ -9,15 +10,15 @@ css: static/css
 js: static/js
 
 frontend/node_modules: frontend/package.json frontend/yarn.lock
-	$(YARN)
+	cd frontend && yarn
 	touch -m $@
 
 static/css: frontend/node_modules $(shell find frontend/sass -type f)
-	$(YARN) run css-build
+	cd frontend && yarn run css-build-debug
 	touch -m $@
 
 static/js: frontend/node_modules $(shell find frontend/src -type f) frontend/tsconfig.json
-	$(YARN) run webpack --prod
+	cd frontend && run webpack --debug
 	touch -m $@
 
 web/target/debug/bobbin: $(shell find web/src -type f) web/Cargo.toml web/Cargo.lock
