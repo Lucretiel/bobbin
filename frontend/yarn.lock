@@ -49,6 +49,11 @@
   resolved "https://registry.yarnpkg.com/@types/tapable/-/tapable-1.0.6.tgz#a9ca4b70a18b270ccb2bc0aaafefd1d486b7ea74"
   integrity sha512-W+bw9ds02rAQaMvaLYxAbJ6cvguW/iJXNT6lTssS1ps6QdrMKttqEAMEG/b5CR8TZl3/L7/lH0ZV5nNR1LXikA==
 
+"@types/twitter-for-web@^0.0.1":
+  version "0.0.1"
+  resolved "https://registry.yarnpkg.com/@types/twitter-for-web/-/twitter-for-web-0.0.1.tgz#85ab870204fae7e9e6d4de5f83d3a407370a0859"
+  integrity sha512-4yM/kodB/NVF9mrVpuW7L0h++ZelPlRtk1dz8QvGS/ZPACSNDTbQ05bSQSwWhGA3d7zbv58vIL3EX4imEmsViw==
+
 "@types/uglify-js@*":
   version "3.9.3"
   resolved "https://registry.yarnpkg.com/@types/uglify-js/-/uglify-js-3.9.3.tgz#d94ed608e295bc5424c9600e6b8565407b6b4b6b"

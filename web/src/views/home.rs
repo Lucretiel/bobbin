@@ -51,7 +51,7 @@ pub fn home() -> impl Template {
     base_template(
         "Bobbin",
         Some(Stylesheet::new("/static/css/index.css")),
-        Some(Script::Module {
+        Some(Script {
             src: "/static/js/search.js",
         }),
         content,

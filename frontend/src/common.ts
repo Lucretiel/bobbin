@@ -24,7 +24,7 @@ export const classNames = (...items: ClassNameItem[]) => {
 
 // Return a future that resolves when DOMContentLoaded fires, or if the
 // page is already loaded
-export const pageReady = () =>
+export const pageReady = (): Promise<void> =>
   new Promise((resolve) => {
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", () => resolve());

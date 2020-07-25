@@ -278,6 +278,14 @@ pub fn sample_thread() -> (Arc<User>, Vec<Tweet>) {
             }),
         },
         Tweet {
+            id: TweetId(1010),
+            author: user.clone(),
+            reply: Some(ReplyInfo {
+                id: TweetId(1285393916825665537),
+                author: userId,
+            }),
+        },
+        Tweet {
             id: TweetId(1285394118508765184),
             author: user.clone(),
             reply: Some(ReplyInfo {

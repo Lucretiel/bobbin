@@ -1,22 +1,20 @@
 @charset 'utf-8';
 
-.tweet-list {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.tweet-container {
-  flex: 1;
+.thread-container {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 
 .tweet-like {
   /* Copied from the tweet style */
-  max-width: 500px;
-  min-width: 220px;
+  max-width: 550px;
+  min-width: 300px;
 }
 
 .thread-end {
   margin-left: auto;
   margin-right: auto;
+  margin-top: -0.75rem;
 }

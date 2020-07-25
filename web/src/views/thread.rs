@@ -1,11 +1,12 @@
-use super::{base::base_template, shared::Script, Stylesheet};
-use crate::twitter::{
-    thread::{example_thread, get_thread, Thread, ThreadAuthor, ThreadItem},
-    TweetId, User, UserHandle,
+use crate::{
+    twitter::{
+        thread::{example_thread, get_thread, Thread, ThreadAuthor, ThreadItem},
+        TweetId, User, UserHandle,
+    },
+    views::{base::base_template, shared::Script, Stylesheet},
 };
 
-use std::{iter, sync::Arc};
-
+use arrayvec::ArrayVec;
 use horrorshow::{html, owned_html, prelude::*};
 use lazy_format::lazy_format;
 use reqwest;
@@ -27,14 +28,15 @@ impl Render for ThreadHeader<'_> {
                 let handle = author.handle.as_ref();
                 let author_url = lazy_format!("https://twitter.com/{}", handle);
                 tmpl << html! {
-                    a(
-                        href=author_url,
-                        target="_blank"
-                    ) {
-                        h3(class="author-header") {
-                            : "Thread by ";
+                    h3(class="author-header") {
+                        : "Thread by ";
+                        a(
+                            href=author_url,
+                            target="_blank"
+                        ) {
                             span(class="author") {
                                 span(class="author-name"): &author.display_name;
+                                :" ";
                                 span(class="author-handle") {
                                     : "@";
                                     : handle;
@@ -70,16 +72,11 @@ struct TweetStub {
 
 impl Render for TweetStub {
     fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
-        let url = lazy_format!("https://twitter.com/someone/status/{}", self.id.as_int());
+        let tweet_id = self.id.as_int();
+        let id = lazy_format!("thread-item-{}", tweet_id);
 
         tmpl << html! {
-            div(class="tweet-container") {
-                // This is a hack on the standard twitter embed widget. In the
-                // future we'll do this with javascript
-                blockquote(class="twitter-tweet", data-conversation="none") {
-                    a(href=url)
-                }
-            }
+            div(class="tweet-container", data-tweet-id=tweet_id, id=id);
         }
     }
 }
@@ -107,9 +104,17 @@ fn render_thread(thread: Thread) -> impl Template {
         ThreadAuthor::Conversation => format!("Twitter conversation on Bobbin"),
     };
 
+    let scripts = ArrayVec::from([
+        Script {
+            src: "https://platform.twitter.com/widgets.js",
+        },
+        Script {
+            src: "/static/js/thread.js",
+        },
+    ]);
+
     let content = owned_html! {
-        script(src="https://platform.twitter.com/widgets.js", charset="utf-8", async);
-        div(class="container") {
+        div(class="container thread-container") {
             div(class="columns") {
                 div(class="column has-text-centered") {
                     : ThreadHeader{ author: thread.author() };
@@ -124,17 +129,22 @@ fn render_thread(thread: Thread) -> impl Template {
                     }
                 }
             }
+            div(class="columns") {
+                div(class="column") {
+                    div(class="tweet-like has-text-centered thread-end") {
+                        span(class="strike") {
+                            span(id="thread-end-message"): "Loading thread...";
+                        }
+                    }
+                }
+            }
         }
     };
 
     base_template(
         title,
         Some(Stylesheet::new("/static/css/thread.css")),
-        Some(Script::Script {
-            src: "https://platform.twitter.com/widgets.js",
-            asinc: true,
-            defer: false,
-        }),
+        scripts,
         content,
     )
 }

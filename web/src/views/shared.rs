@@ -1,5 +1,6 @@
-use horrorshow::html;
 use horrorshow::prelude::*;
+use horrorshow::{html, owned_html};
+use lazy_format::lazy_format;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Stylesheet {
@@ -47,39 +48,19 @@ impl RenderOnce for Stylesheet {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Script {
-    Script {
-        src: &'static str,
-        asinc: bool,
-        defer: bool,
-    },
-    Module {
-        src: &'static str,
-    },
+pub struct Script {
+    pub src: &'static str,
 }
 
 impl Render for Script {
     fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
-        match *self {
-            Script::Script { src, asinc, defer } => {
-                tmpl << html! {
-                    script(
-                        src = src,
-                        async ?= asinc,
-                        defer ?= defer,
-                        charset = "utf-8"
-                    )
-                }
-            }
-            Script::Module { src } => {
-                tmpl << html! {
-                       script(
-                           src = src,
-                           type = "module"
-                       )
-                }
-            }
-        }
+        tmpl << html! {
+            script (
+                src = self.src,
+                charset = "utf-8",
+                async
+            )
+        };
     }
 }
 

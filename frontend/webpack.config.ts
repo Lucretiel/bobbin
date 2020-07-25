@@ -14,6 +14,10 @@ const config: webpack.Configuration = {
       import: relative("./src/search.ts"),
       dependOn: "common",
     },
+    thread: {
+      import: relative("./src/thread.ts"),
+      dependOn: "common",
+    },
     common: relative("./src/common.ts"),
   },
 

@@ -1,6 +1,11 @@
 @charset "utf-8";
-@use "bulma/bulma.sass";
-@use "@fortawesome/fontawesome-free/css/all.css";
+@use "bulma/bulma.sass" with (
+  $footer-padding: 1rem 1.5rem
+);
+
+@use "./fontawesome" with (
+  $fa-font-path: "/static/webfonts"
+);
 
 html,
 body {
@@ -27,6 +32,20 @@ body {
   margin-left: 0.5rem;
   font-size: 0.9em;
   font-weight: lighter;
+}
+/*
+#bobbin-footer {
+  display: flex;
+  background-color: bulma.$dark;
+}
+
+#bobbin-footer a {
+  color: bulma.$white;
+}*/
+
+#bobbin-footer > div.container {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .footer-item {

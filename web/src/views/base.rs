@@ -18,7 +18,7 @@ pub(super) fn base_template<'a>(
 
     owned_html! {
         : doctype::HTML;
-        html {
+        html(prefix="og: https://ogp.me/ns#") {
             head {
                 title {
                     : title.as_ref();
@@ -30,19 +30,13 @@ pub(super) fn base_template<'a>(
                     : css_item
                 }
 
-                : Script::Script {
+                : Script {
                     src: "/static/js/common.js",
-                    asinc: true,
-                    defer: false,
                 };
 
-                : Script::Script {
+                : Script {
                     src: "/static/js/nav.js",
-                    asinc: true,
-                    defer: false,
                 };
-
-
 
                 @ for script in scripts {
                     : script
@@ -76,7 +70,7 @@ pub(super) fn base_template<'a>(
                     main {
                         : main_content;
                     }
-                    footer(class="footer is-dark") {
+                    footer(class="footer", id="bobbin-footer") {
                         div(class="container") {
                             span(class="footer-item") {
                                 a(href="https://github.com/Lucretiel/bobbin", target="_blank"):
