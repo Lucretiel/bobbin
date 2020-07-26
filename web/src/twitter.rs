@@ -5,7 +5,7 @@ pub mod thread;
 
 use std::{
     collections::hash_map::{Entry, HashMap},
-    fmt::{self, Display, Formatter, Write},
+    fmt::Write,
     sync::Arc,
 };
 
@@ -17,6 +17,8 @@ use auth::Token;
 
 // TODO: use more `Raw` types to firmly establish a construction boundary;
 // only this module may create UserHandle, TweetId, etc
+// TODO: convert this to NonZeroU64 so that optionals don't take up SIXTEEN
+// BYTES.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TweetId(u64);
 
@@ -30,14 +32,10 @@ impl TweetId {
     }
 }
 
+// TODO: convert this to NonZeroU64 so that optionals don't take up SIXTEEN
+// BYTES.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct UserId(u64);
-
-impl UserId {
-    pub fn as_int(&self) -> u64 {
-        self.0
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct UserHandle(String);
@@ -221,8 +219,6 @@ pub async fn get_user_tweets(
         include_rts: &'static str,
     }
 
-    let url = http::Uri::from_static(USER_TIMELINE_URL);
-
     // TODO: parse the URL once, using lazy_static
     // TODO: check for certain kinds of recoverable errors (auth errors etc)
     let request = client
@@ -258,49 +254,3 @@ TODO:
 - Error code 401 unauthorized; make one (1) attempt to refresh the token.
 - Error code 420 or 429 rate limited: Page me
 */
-
-pub fn sample_thread() -> (Arc<User>, Vec<Tweet>) {
-    let userId = UserId(7909592);
-
-    let user = User {
-        id: userId,
-        display_name: "Lucretiel 🦀".to_string(),
-        handle: UserHandle("Lucretiel".to_string()),
-    };
-
-    let user = Arc::new(user);
-
-    let tweets = vec![
-        Tweet {
-            id: TweetId(1285393620091187200),
-            author: user.clone(),
-            reply: None,
-        },
-        Tweet {
-            id: TweetId(1285393916825665537),
-            author: user.clone(),
-            reply: Some(ReplyInfo {
-                id: TweetId(1285393620091187200),
-                author: userId,
-            }),
-        },
-        Tweet {
-            id: TweetId(1010),
-            author: user.clone(),
-            reply: Some(ReplyInfo {
-                id: TweetId(1285393916825665537),
-                author: userId,
-            }),
-        },
-        Tweet {
-            id: TweetId(1285394118508765184),
-            author: user.clone(),
-            reply: Some(ReplyInfo {
-                id: TweetId(1285393916825665537),
-                author: userId,
-            }),
-        },
-    ];
-
-    (user, tweets)
-}

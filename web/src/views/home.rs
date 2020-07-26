@@ -2,7 +2,6 @@ use super::base::base_template;
 use crate::social_tags;
 
 use horrorshow::{owned_html, prelude::*};
-use std::iter;
 
 pub fn home() -> impl Template {
     let meta = owned_html! {

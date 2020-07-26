@@ -1,8 +1,8 @@
 use crate::{
     twitter::{
         auth,
-        thread::{example_thread, get_thread, Thread, ThreadAuthor, ThreadItem},
-        TweetId, User, UserHandle,
+        thread::{get_thread, Thread, ThreadAuthor},
+        TweetId,
     },
     views::base::base_template,
 };

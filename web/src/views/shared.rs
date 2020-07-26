@@ -1,10 +1,11 @@
-use horrorshow::{html, owned_html, prelude::*};
-use lazy_format::lazy_format;
-
 // f: facebook / opengraph
 // t: twitter
 // s: social (aka generic over facebook + twitter)
 // m: meta (aka generic over facebook + twitter + meta) (this is just for description & title)
+//
+// TODO: clean this up. It's a challenge because the normal recursive macro thing
+// doesn't work very well here, because we can't have arbitrary macro expansions
+// inside of horrorshow.
 #[macro_export]
 macro_rules! social_tags {
     ($($(f : $og_key:ident)? $(t : $twitter_key:ident)? $(m:$meta_key:ident)? $(s:$social_key:ident)? : $content:expr);* $(;)?) => {

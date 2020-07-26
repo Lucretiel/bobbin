@@ -3,11 +3,11 @@ mod views;
 
 use std::{convert, net::IpAddr, path::PathBuf};
 
-use futures::{FutureExt, TryFutureExt};
+use futures::FutureExt;
 use horrorshow::prelude::*;
 use reqwest;
 use structopt;
-use warp::{self, Filter, Reply};
+use warp::{self, Filter};
 
 use secrecy::Secret;
 use twitter::{auth, TweetId};
@@ -105,6 +105,7 @@ async fn run(args: Args) {
     warp::serve(service).run((args.bind, args.port)).await
 }
 
+#[allow(unused_braces)]
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) {

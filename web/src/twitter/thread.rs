@@ -87,6 +87,9 @@ pub async fn get_thread(
                 Some(tweet) => {
                     // Pre-fetch the reply author's recent tweets, as described
                     // above
+                    // TODO: If this comes back empty, it's probably because
+                    // the get_user_tweets API can't search arbitrarily far
+                    // back in time. This means that
                     if let Some(ref reply) = tweet.reply {
                         let user_tweets =
                             twitter::get_user_tweets(client, token, reply.author, tweet.id)
@@ -102,10 +105,7 @@ pub async fn get_thread(
             },
         };
 
-        match tweet.previous_tweet_id() {
-            Some(prev_id) => current_tweet_id = prev_id,
-            None => break,
-        }
+        let prev_id = tweet.previous_tweet_id();
 
         thread.push(match tweet {
             TweetLookupResult::FoundTweet(tweet) => ThreadItem::Tweet(tweet),
@@ -114,6 +114,11 @@ pub async fn get_thread(
 
         if head == Some(current_tweet_id) {
             break;
+        }
+
+        match prev_id {
+            Some(id) => current_tweet_id = id,
+            None => break,
         }
     }
 
@@ -168,13 +173,5 @@ fn thread_author<'a>(authors: impl IntoIterator<Item = &'a Arc<User>>) -> Thread
             // Otherwise it's a conversation
             _ => ThreadAuthor::Conversation,
         },
-    }
-}
-
-pub fn example_thread() -> Thread {
-    let (user, tweets) = twitter::sample_thread();
-    Thread {
-        items: tweets.into_iter().map(ThreadItem::Tweet).collect(),
-        author: ThreadAuthor::Author(user),
     }
 }
