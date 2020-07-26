@@ -1,15 +1,11 @@
 @charset 'utf-8';
 @use './base';
+@use './hoverlink';
 
 #faq-content {
   max-width: 50em;
 }
 
-a.hoverlink {
-  visibility: hidden;
+.faq-question > a {
   padding: 0 4pt;
-}
-
-*:hover > a.hoverlink {
-  visibility: visible;
 }

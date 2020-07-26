@@ -1,8 +1,6 @@
 use super::base::base_template;
 use crate::social_tags;
 
-use std::iter;
-
 use horrorshow::{html, owned_html, prelude::*};
 
 #[derive(Debug, Clone)]
@@ -37,10 +35,12 @@ macro_rules! question_list {
     ($(slug:$slug:expr, question:$question:expr, answer:$answer:expr;)*) => {
         owned_html! {
             dl {$(
-                dt(class="faq-question", id=$slug) {
+                dt(class="faq-question hoverlink-container", id=$slug) {
                     strong: $question;
-                    a(class="hoverlink", href=format_args!("#{}", $slug)) {
-                        i(class="fas fas-link");
+                    a(class="hoverlink-link", href=concat!("#", $slug)) {
+                        span(class="icon") {
+                            i(class="fas fa-link");
+                        }
                     }
                 }
                 dd(class="faq-answer"): $answer;
