@@ -65,3 +65,9 @@ export const fetchElementById = (id: string) =>
 // a list of elements by ID, returning them as an array.
 export const fetchElementsByIds = (...ids: string[]) =>
   Promise.all(ids.map((id) => fetchElementById(id)));
+
+export const fetchElementsByClass = (className: string) =>
+  pageReady().then(
+    () =>
+      Array.from(document.getElementsByClassName(className)) as HTMLElement[]
+  );

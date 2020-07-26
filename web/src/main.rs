@@ -1,8 +1,7 @@
 mod twitter;
 mod views;
 
-use std::net::IpAddr;
-use std::path::PathBuf;
+use std::{convert, net::IpAddr, path::PathBuf};
 
 use futures::{FutureExt, TryFutureExt};
 use horrorshow::prelude::*;
@@ -10,7 +9,12 @@ use reqwest;
 use structopt;
 use warp::{self, Filter, Reply};
 
-use twitter::TweetId;
+use secrecy::Secret;
+use twitter::{auth, TweetId};
+
+fn parse_consumer_secret(s: &str) -> Secret<String> {
+    Secret::new(String::from(s))
+}
 
 #[derive(Debug, Clone, structopt::StructOpt)]
 struct Args {
@@ -22,6 +26,25 @@ struct Args {
 
     #[structopt(short, long, help = "Directory containing all the static files")]
     static_dir: PathBuf,
+
+    #[structopt(long, help = "The Twitter oauth consumer key", env = "CONSUMER_KEY")]
+    consumer_key: String,
+
+    #[structopt(
+        long,
+        help = "The Twitter oauth consumer secret",
+        env = "CONSUMER_SECRET",
+        parse(from_str=parse_consumer_secret)
+    )]
+    consumer_secret: Secret<String>,
+}
+
+/// Helper function for `warp`. `warp` requires async handlers to return a
+/// Result, so for cases where such a result is infallible, this function is
+/// the equivalent of `Ok`, but with the error type fixed to `Infallible`.
+#[inline]
+fn infallible<T>(thing: T) -> Result<T, convert::Infallible> {
+    Ok(thing)
 }
 
 /// Tokio's proc macro #[tokio::main] substantially obfuscates errors in main,
@@ -34,6 +57,18 @@ async fn run(args: Args) {
     // Create a rewest client for making API calls
     let http_client = reqwest::Client::builder().build().unwrap();
 
+    // Get an auth token
+    // TODO: Set up the handlers to refresh the token if necessary
+    let credentials = auth::Credentials {
+        consumer_key: args.consumer_key,
+        consumer_secret: args.consumer_secret,
+    };
+
+    // TODO: Wrap this in an Arc
+    let token = auth::generate_bearer_token(&http_client, &credentials)
+        .await
+        .expect("Couldn't get a bearer token");
+
     // Route: /
     let root = warp::path::end().map(move || warp::reply::html(home));
 
@@ -41,32 +76,14 @@ async fn run(args: Args) {
     let faq = warp::path!("faq").map(move || warp::reply::html(faq));
 
     // Route: /thread/{thread_id}
-    // TODO: How much of this should be part of the view? Probably the view
-    // should return an HTTP response, and the closure should take care of
-    // gathering the client, tweet ID, etc. While we're at it, the other views
-    // should return an http::response too.
     let thread = warp::path!("thread" / u64).and_then(move |tweet_id| {
         let client = http_client.clone();
-        async move {
-            let tweet_id = TweetId::new(tweet_id);
-            let response = match views::thread(&client, tweet_id, None).await {
-                Ok(content) => http::Response::builder()
-                    .status(200)
-                    .header(http::header::CONTENT_TYPE, "text/html")
-                    .body(hyper::Body::from(content))
-                    .unwrap(),
-                Err(err) => http::Response::builder()
-                    .status(500)
-                    .body(hyper::Body::empty())
-                    .unwrap(),
-            };
+        let token = token.clone();
+        let tweet_id = TweetId::new(tweet_id);
 
-            if true {
-                Ok(response)
-            } else {
-                Err(warp::reject::reject())
-            }
-        }
+        views::thread(client, token, tweet_id, None)
+            // and_then requires a Result
+            .map(infallible)
     });
 
     // Route: /static/...

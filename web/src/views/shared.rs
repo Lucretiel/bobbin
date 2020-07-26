@@ -1,80 +1,25 @@
-use horrorshow::prelude::*;
-use horrorshow::{html, owned_html};
+use horrorshow::{html, owned_html, prelude::*};
 use lazy_format::lazy_format;
 
-#[derive(Debug, Clone, Copy)]
-pub struct Stylesheet {
-    pub href: &'static str,
-    pub integrity: Option<&'static str>,
-    pub crossorigin: Option<&'static str>,
-}
-
-impl Stylesheet {
-    pub const fn new(href: &'static str) -> Self {
-        Self {
-            href,
-            integrity: None,
-            crossorigin: None,
-        }
-    }
-}
-
-impl Render for Stylesheet {
-    fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
-        tmpl << html! {
-            link(
-                rel = "stylesheet",
-                href = self.href,
-                integrity ?= self.integrity,
-                crossorigin ?= self.crossorigin
-            )
-        }
-    }
-}
-
-impl RenderMut for Stylesheet {
-    fn render_mut<'a>(&mut self, tmpl: &mut TemplateBuffer<'a>) {
-        self.render(tmpl)
-    }
-}
-
-impl RenderOnce for Stylesheet {
-    fn render_once(self, tmpl: &mut TemplateBuffer<'_>)
-    where
-        Self: Sized,
-    {
-        self.render(tmpl)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Script {
-    pub src: &'static str,
-}
-
-impl Render for Script {
-    fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
-        tmpl << html! {
-            script (
-                src = self.src,
-                charset = "utf-8",
-                async
-            )
-        };
-    }
-}
-
-impl RenderMut for Script {
-    fn render_mut<'a>(&mut self, tmpl: &mut TemplateBuffer<'a>) {
-        self.render(tmpl)
-    }
-}
-
-impl RenderOnce for Script {
-    fn render_once(self, tmpl: &mut TemplateBuffer<'_>)
-    where
-        Self: Sized,
-    {
-        self.render(tmpl)
-    }
+// f: facebook / opengraph
+// t: twitter
+// s: social (aka generic over facebook + twitter)
+// m: meta (aka generic over facebook + twitter + meta) (this is just for description & title)
+#[macro_export]
+macro_rules! social_tags {
+    ($($(f : $og_key:ident)? $(t : $twitter_key:ident)? $(m:$meta_key:ident)? $(s:$social_key:ident)? : $content:expr);* $(;)?) => {
+        horrorshow::owned_html! {$(
+            $( meta( property=concat!("og:", stringify!($og_key)), content=$content ); )?
+            $( meta( name=concat!("twitter:", stringify!($twitter_key)), content=$content ); )?
+            $(
+                meta( property=concat!("og:", stringify!($social_key)), content=$content );
+                meta( name=concat!("twitter:", stringify!($social_key)), content=$content );
+            )?
+            $(
+                meta( name=stringify!($meta_key), content=$content );
+                meta( property=concat!("og:", stringify!($meta_key)), content=$content );
+                meta( name=concat!("twitter:", stringify!($meta_key)), content=$content );
+            )?
+        )*}
+    };
 }

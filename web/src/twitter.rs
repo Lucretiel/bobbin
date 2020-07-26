@@ -3,12 +3,13 @@
 pub mod auth;
 pub mod thread;
 
-use std::collections::hash_map::{Entry, HashMap};
-use std::fmt::{self, Display, Formatter, Write};
-use std::sync::Arc;
+use std::{
+    collections::hash_map::{Entry, HashMap},
+    fmt::{self, Display, Formatter, Write},
+    sync::Arc,
+};
 
-use joinery::prelude::*;
-use joinery::separators::Comma;
+use joinery::{prelude::*, separators::Comma};
 use reqwest;
 use serde::{Deserialize, Serialize};
 
@@ -137,7 +138,7 @@ struct RawTweet {
     pub reply_author_id: Option<UserId>,
 }
 
-const LOOKUP_TWEETS_URL: &'static str = "https://api.twitter.com/1.1/statuses/lookup";
+const LOOKUP_TWEETS_URL: &'static str = "https://api.twitter.com/1.1/statuses/lookup.json";
 
 /// Fetch a bunch of tweets with /statuses/lookup. Note that this only
 /// fetches the first 100 tweets in the list, and silently drops the rest;
@@ -176,6 +177,8 @@ pub async fn get_tweets(
         .header("Accept", "application/json");
 
     let request = token.apply(request);
+
+    eprintln!("Single Tweet: {:?}", request);
 
     let response_tweets: Vec<RawTweet> = request.send().await?.error_for_status()?.json().await?;
 
@@ -218,7 +221,9 @@ pub async fn get_user_tweets(
         include_rts: &'static str,
     }
 
-    // TODO: parse the URL once and use a global Url object?
+    let url = http::Uri::from_static(USER_TIMELINE_URL);
+
+    // TODO: parse the URL once, using lazy_static
     // TODO: check for certain kinds of recoverable errors (auth errors etc)
     let request = client
         .get(USER_TIMELINE_URL)
@@ -232,6 +237,8 @@ pub async fn get_user_tweets(
         .header("Accept", "application/json");
 
     let request = token.apply(request);
+
+    eprintln!("User Tweets: {:?}", request);
 
     let response_tweets: Vec<RawTweet> = request.send().await?.error_for_status()?.json().await?;
 

@@ -1,11 +1,20 @@
 use super::base::base_template;
-use super::{shared::Script, Stylesheet};
+use crate::social_tags;
 
-use horrorshow::owned_html;
-use horrorshow::prelude::*;
+use horrorshow::{owned_html, prelude::*};
 use std::iter;
 
 pub fn home() -> impl Template {
+    let meta = owned_html! {
+        link(rel="stylesheet", href="/static/css/index.css");
+        script(src="/static/js/search.js", async, charset="utf-8");
+        : social_tags! {
+            m:title: "Bobbin";
+            m:description: "Share Twitter threads with Bobbin";
+            f:type: "website";
+        };
+    };
+
     let content = owned_html! {
         div {
             section(class="hero") {
@@ -48,12 +57,5 @@ pub fn home() -> impl Template {
         }
     };
 
-    base_template(
-        "Bobbin",
-        Some(Stylesheet::new("/static/css/index.css")),
-        Some(Script {
-            src: "/static/js/search.js",
-        }),
-        content,
-    )
+    base_template("Bobbin", meta, content)
 }

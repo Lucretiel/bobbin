@@ -1,4 +1,5 @@
 @charset 'utf-8';
+@use "bulma/bulma.sass";
 
 .thread-container {
   margin-top: 1rem;
@@ -10,7 +11,29 @@
 .tweet-like {
   /* Copied from the tweet style */
   max-width: 550px;
-  min-width: 300px;
+  min-width: 280px;
+}
+
+.fake-tweet {
+  /* Copied from the tweet style */
+  @extend .tweet-like;
+  border: 1px solid rgb(204, 214, 221);
+  border-radius: 14px;
+  padding: 10px 15px;
+  margin: 10px auto;
+  transition-property: background-color, box-shadow;
+  transition-duration: 0.2s;
+  &:hover {
+    background-color: rgb(245, 248, 250);
+  }
+}
+
+.hidden {
+  display: none;
+}
+
+.tweet-failure {
+  @extend .has-text-danger;
 }
 
 .thread-end {

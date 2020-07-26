@@ -104,3 +104,8 @@ impl Token for BearerToken {
         req.bearer_auth(self.token.expose_secret())
     }
 }
+
+// TODO: auth service: a background task that handles refreshing API tokens
+// in the event that requests start failing. That way, if multiple request
+// handlers all start failing at once, we can just get the one key and hand it
+// back out without hammering twitter's api service.

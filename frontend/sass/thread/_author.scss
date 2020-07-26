@@ -1,9 +1,8 @@
 @charset 'utf-8';
 @use "bulma/bulma.sass";
 
-.author-header,
-.author-name {
-  @extend .has-text-black-ter;
+.author-header * {
+  color: bulma.$black;
 }
 
 .author-header {
@@ -11,11 +10,15 @@
   font-weight: 500;
 }
 
+.author:hover .author-name {
+  text-decoration: underline;
+}
+
 .author-name {
   font-weight: bold;
 }
 
 .author-handle {
-  font-size: 0.75em;
-  @extend .has-text-grey;
+  font-size: 0.8em;
+  color: bulma.$grey;
 }

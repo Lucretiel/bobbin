@@ -1,20 +1,13 @@
-use super::shared::{Script, Stylesheet};
-
-use horrorshow::helper::doctype;
 use std::borrow::Cow;
 
-use horrorshow::owned_html;
-use horrorshow::prelude::*;
+use horrorshow::{helper::doctype, owned_html, prelude::*};
 
 pub(super) fn base_template<'a>(
     title: impl Into<Cow<'static, str>>,
-    css: impl IntoIterator<Item = Stylesheet>,
-    scripts: impl IntoIterator<Item = Script>,
+    meta: impl RenderOnce,
     main_content: impl RenderOnce,
 ) -> impl Template {
     let title = title.into();
-    let css_items = css.into_iter();
-    let scripts = scripts.into_iter();
 
     owned_html! {
         : doctype::HTML;
@@ -23,24 +16,14 @@ pub(super) fn base_template<'a>(
                 title {
                     : title.as_ref();
                 }
+
                 meta(charset="utf-8");
                 meta(name="viewport", content="width=device-width, initial-scale=1");
 
-                @ for css_item in css_items {
-                    : css_item
-                }
+                script(src="/static/js/common.js", async, charset="utf-8");
+                script(src="/static/js/nav.js", async, charset="utf-8");
 
-                : Script {
-                    src: "/static/js/common.js",
-                };
-
-                : Script {
-                    src: "/static/js/nav.js",
-                };
-
-                @ for script in scripts {
-                    : script
-                }
+                :meta;
             }
             body {
                 div(class="grow-main") {
