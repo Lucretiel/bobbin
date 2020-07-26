@@ -1,0 +1,13 @@
+// Helper types for a hoverlink (that is, a little fragment anchor link that
+// appears when an item in a list is hovered).
+//
+// Tag the element-to-be-hovered with hoverlink-container and the link itself
+// with hoverlink-link
+
+.hoverlink-link {
+  visibility: hidden;
+}
+
+.hoverlink-container:hover .hoverlink-link {
+  visibility: visible;
+}
