@@ -3,6 +3,7 @@
         "blockquote",
         "horrorshow",
         "reqwest",
+        "structopt",
         "twttr"
     ]
 }

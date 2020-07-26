@@ -17,31 +17,42 @@ fn parse_consumer_secret(s: &str) -> Secret<String> {
 }
 
 #[derive(Debug, Clone, structopt::StructOpt)]
+#[structopt(
+    setting = structopt::clap::AppSettings::ColoredHelp,
+    setting = structopt::clap::AppSettings::UnifiedHelpMessage,
+)]
 struct Args {
-    #[structopt(short, long, env = "PORT", help = "The port to serve on")]
+    /// The port to serve on
+    #[structopt(short, long, env = "PORT")]
     port: u16,
 
-    #[structopt(short, long, help = "The IP address to bind to")]
+    /// The IP address to bind to
+    #[structopt(short, long)]
     bind: IpAddr,
 
-    #[structopt(short, long, help = "Directory containing all the static files")]
+    /// Directory containing all the static files.
+    ///
+    /// This directory should contain the /js, /css, etc directories.
+    #[structopt(short, long, default_value = "./static")]
     static_dir: PathBuf,
 
-    #[structopt(long, help = "The Twitter oauth consumer key", env = "CONSUMER_KEY")]
+    /// The Twitter oauth consumer key
+    #[structopt(long, env = "CONSUMER_KEY")]
     consumer_key: String,
 
+    /// The Twitter oauth consumer secret
     #[structopt(
         long,
-        help = "The Twitter oauth consumer secret",
         env = "CONSUMER_SECRET",
         parse(from_str=parse_consumer_secret)
     )]
     consumer_secret: Secret<String>,
 }
 
-/// Helper function for `warp`. `warp` requires async handlers to return a
-/// Result, so for cases where such a result is infallible, this function is
-/// the equivalent of `Ok`, but with the error type fixed to `Infallible`.
+/// Type inference helper function for `warp`. `warp` requires async handlers
+/// to return a Result, so for cases where such a result is infallible, this
+/// function is the equivalent of `Ok`, but with the error type fixed to
+/// `Infallible`.
 #[inline]
 fn infallible<T>(thing: T) -> Result<T, convert::Infallible> {
     Ok(thing)
