@@ -18,23 +18,9 @@ pub struct Meta {
 
 #[derive(Debug, Clone)]
 pub struct Thread {
-    items: Vec<TweetId>,
-    author: ThreadAuthor,
-    meta: Option<Meta>,
-}
-
-impl Thread {
-    pub fn items(&self) -> &[TweetId] {
-        &self.items
-    }
-
-    pub fn author(&self) -> &ThreadAuthor {
-        &self.author
-    }
-
-    pub fn meta(&self) -> Option<&Meta> {
-        self.meta.as_ref()
-    }
+    pub items: Vec<TweetId>,
+    pub author: ThreadAuthor,
+    pub meta: Option<Meta>,
 }
 
 #[derive(Debug, Clone)]

@@ -26,7 +26,7 @@ const config: webpack.Configuration = {
   },
   output: {
     filename: "[name].js",
-    path: relative("../static/js"),
+    path: relative("./static/js"),
   },
   module: {
     rules: [

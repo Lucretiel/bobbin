@@ -21,7 +21,7 @@
     "webpack-cli": "^4.0.0-beta.8"
   },
   "scripts": {
-    "css-build-debug": "sass --load-path ./node_modules ./sass/:../static/css",
+    "css-build-debug": "sass --load-path ./node_modules ./sass/:./static/css",
     "css-build": "yarn run css-build-debug --style compressed --no-source-map"
   }
 }

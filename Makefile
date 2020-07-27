@@ -3,36 +3,36 @@
 # realize anything has changed, because the dependency chains are still fine.
 # Maybe separate directories for dev and prod output?
 
+STATIC_DIR = frontend/static
 NODE_MODULES = frontend/node_modules
 FONT_SRC_DIR = $(NODE_MODULES)/@fortawesome/fontawesome-free/webfonts
 
 all: js css web webfonts
 
 web: web/target/debug/bobbin
-css: static/css
-js: static/js
-webfonts: static/webfonts
+css: $(STATIC_DIR)/css
+js: $(STATIC_DIR)/js
+webfonts: $(STATIC_DIR)/webfonts
 
 .PHONY: all css js web webfonts
-
-static:
-	mkdir static
 
 $(NODE_MODULES): frontend/package.json frontend/yarn.lock
 	cd frontend && yarn
 	touch -m $@
 
-static/css: $(NODE_MODULES) $(shell find frontend/sass -type f) |static
+$(STATIC_DIR)/css: $(NODE_MODULES) $(shell find frontend/sass -type f)
 	cd frontend && yarn run css-build-debug
 	touch -m $@
 
-static/js: frontend/webpack.config.ts frontend/tsconfig.json $(NODE_MODULES) |static
-static/js: $(shell find frontend/src -type f)
+$(STATIC_DIR)/js: frontend/webpack.config.ts frontend/tsconfig.json $(NODE_MODULES)
+$(STATIC_DIR)/js: $(shell find frontend/src -type f)
 	cd frontend && yarn run webpack --dev
 	touch -m $@
 
-static/webfonts: |static $(NODE_MODULES)
-	cd static && ln -s ../$(FONT_SRC_DIR)
+$(STATIC_DIR)/webfonts: $(NODE_MODULES)
+	mkdir -p $@
+	cp $(FONT_SRC_DIR)/fa-solid* $@
+	touch -m $@
 
 web/target/debug/bobbin: $(shell find web/src -type f) web/Cargo.toml web/Cargo.lock
 	cd web && cargo build
@@ -44,13 +44,13 @@ clean-web:
 	cd web && cargo clean
 
 clean-css:
-	rm -rf static/css
+	rm -rf $(STATIC_DIR)/css
 
 clean-js:
-	rm -rf static/js
+	rm -rf $(STATIC_DIR)/js
 
 clean-static:
-	rm -rf static
+	rm -rf $(STATIC_DIR)
 
 clean-node-modules:
 	rm -rf frontend/node_modules

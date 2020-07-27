@@ -70,17 +70,20 @@ impl RenderOnce for ThreadHeader<'_> {
 /// The synchronous part of building a thread; once we have all the twitter
 /// ids and an author, render to HTML
 fn render_thread(thread: Thread) -> impl Template {
+    let Thread {
+        author,
+        items,
+        meta: meta_details,
+    } = thread;
+
     // TODO: Arc here too
-    let title = match thread.author() {
-        ThreadAuthor::Author(author) => {
+    let title = match author {
+        ThreadAuthor::Author(ref author) => {
             Cow::Owned(format!("Thread by {} on Bobbin", author.display_name))
         }
         ThreadAuthor::Conversation => Cow::Borrowed("Twitter conversation on Bobbin"),
     };
 
-    // TODO: publicify the content of thread; that will let us avoid some
-    // of these clones
-    let thread_meta = thread.meta().cloned();
     let meta_title = title.clone();
 
     // TODO: meta tag for thread author
@@ -94,7 +97,7 @@ fn render_thread(thread: Thread) -> impl Template {
             s:title: meta_title.as_ref();
         };
 
-        @if let Some(meta) = thread_meta {
+        @if let Some(meta) = meta_details {
             :social_tags! {
                 m:description: &meta.description;
                 s:image: &meta.image_url;
@@ -106,13 +109,13 @@ fn render_thread(thread: Thread) -> impl Template {
         div(class="container thread-container") {
             div(class="columns") {
                 div(class="column has-text-centered") {
-                    : ThreadHeader{ author: thread.author() };
+                    : ThreadHeader{ author: &author };
                 }
             }
             div(class="columns") {
                 div(class="column") {
                     div(class="tweet-list") {
-                        @ for item in thread.items() {
+                        @ for item in items {
                             div(class="tweet-container", data-tweet-id=item.as_int()) {
                                 div(class="fake-tweet tweet-failure hidden") {
                                     :"Error: failed to load tweet (tweet ID: ";

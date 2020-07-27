@@ -102,6 +102,9 @@ impl UserTable {
     }
 }
 
+// TODO: Replace all these strings with bytes::Bytes, which is a reference
+// counted buffer that's cheaper to clone.
+
 #[derive(Debug, Clone)]
 pub struct ReplyInfo {
     pub id: TweetId,

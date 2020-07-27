@@ -1,5 +1,4 @@
-//TODO: Convert these to mod.rs
-mod handlers;
+// TODO: Convert these to mod.rs
 mod twitter;
 mod views;
 
@@ -66,6 +65,8 @@ fn infallible<T>(thing: T) -> Result<T, convert::Infallible> {
 /// in main, so we have this be the actual main function and `main` just awaits
 /// it
 async fn run(args: Args) {
+    // TODO: Check that static_dir exists
+
     // Pre-render the pages that never change. We allocate them into strings,
     // then deliberately memory leak them so that we get &'static str
     let home = Bytes::from(views::home().into_string().unwrap());
