@@ -1,0 +1,4 @@
+/web/target
+/frontend/node_modules
+/frontend/static
+**/.gitignore
