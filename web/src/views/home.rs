@@ -47,7 +47,7 @@ pub fn home() -> impl Template {
                                 a(class="button is-info", id="help-button"): "Help";
                             }
                             div(class="control") {
-                                a(class="button is-link disabled", id="thread-button"): "View Thread";
+                                a(class="button is-link", id="thread-button", disabled): "View Thread";
                             }
                         }
                     }

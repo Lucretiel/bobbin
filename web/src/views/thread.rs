@@ -1,4 +1,5 @@
 use crate::{
+    social_tags,
     twitter::{
         auth,
         thread::{get_thread, Thread, ThreadAuthor},
@@ -69,6 +70,7 @@ impl RenderOnce for ThreadHeader<'_> {
 /// The synchronous part of building a thread; once we have all the twitter
 /// ids and an author, render to HTML
 fn render_thread(thread: Thread) -> impl Template {
+    // TODO: Arc here too
     let title = match thread.author() {
         ThreadAuthor::Author(author) => {
             Cow::Owned(format!("Thread by {} on Bobbin", author.display_name))
@@ -76,10 +78,28 @@ fn render_thread(thread: Thread) -> impl Template {
         ThreadAuthor::Conversation => Cow::Borrowed("Twitter conversation on Bobbin"),
     };
 
+    // TODO: publicify the content of thread; that will let us avoid some
+    // of these clones
+    let thread_meta = thread.meta().cloned();
+    let meta_title = title.clone();
+
+    // TODO: meta tag for thread author
+    // TODO: meta tag for URL
     let meta = owned_html! {
         link(rel="stylesheet", href="/static/css/thread.css");
         script(src="https://platform.twitter.com/widgets.js", charset="utf-8", async);
         script(src="/static/js/thread.js", charset="utf-8", async);
+
+        :social_tags! {
+            s:title: meta_title.as_ref();
+        };
+
+        @if let Some(meta) = thread_meta {
+            :social_tags! {
+                m:description: &meta.description;
+                s:image: &meta.image_url;
+            };
+        }
     };
 
     let content = owned_html! {
@@ -93,10 +113,10 @@ fn render_thread(thread: Thread) -> impl Template {
                 div(class="column") {
                     div(class="tweet-list") {
                         @ for item in thread.items() {
-                            div(class="tweet-container", data-tweet-id=item.tweet_id().as_int()) {
+                            div(class="tweet-container", data-tweet-id=item.as_int()) {
                                 div(class="fake-tweet tweet-failure hidden") {
                                     :"Error: failed to load tweet (tweet ID: ";
-                                    :item.tweet_id().as_int();
+                                    :item.as_int();
                                     :")";
                                 }
                             }

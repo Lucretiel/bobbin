@@ -1,8 +1,12 @@
+//TODO: Convert these to mod.rs
+mod handlers;
 mod twitter;
 mod views;
 
 use std::{convert, net::IpAddr, path::PathBuf};
 
+use bytes::Bytes;
+use chrono;
 use futures::FutureExt;
 use horrorshow::prelude::*;
 use reqwest;
@@ -18,7 +22,7 @@ fn parse_consumer_secret(s: &str) -> Secret<String> {
 
 #[derive(Debug, Clone, structopt::StructOpt)]
 #[structopt(
-    setting = structopt::clap::AppSettings::ColoredHelp,
+    setting = structopt::clap::AppSettings::ColorAuto,
     setting = structopt::clap::AppSettings::UnifiedHelpMessage,
 )]
 struct Args {
@@ -58,14 +62,20 @@ fn infallible<T>(thing: T) -> Result<T, convert::Infallible> {
     Ok(thing)
 }
 
-/// Tokio's proc macro #[tokio::main] substantially obfuscates errors in main,
-/// so we have this be the actual main function and `main` just awaits it
+/// Tokio's proc macro #[tokio::main] substantially obfuscates compile errors
+/// in main, so we have this be the actual main function and `main` just awaits
+/// it
 async fn run(args: Args) {
-    // Pre-render the pages that never change.
-    let home: &str = Box::leak(views::home().into_string().unwrap().into_boxed_str());
-    let faq: &str = Box::leak(views::faq().into_string().unwrap().into_boxed_str());
+    // Pre-render the pages that never change. We allocate them into strings,
+    // then deliberately memory leak them so that we get &'static str
+    let home = Bytes::from(views::home().into_string().unwrap());
+    let faq = Bytes::from(views::faq().into_string().unwrap());
 
-    // Create a rewest client for making API calls
+    // Server start time. This is used for cache headers.
+    let server_start = chrono::Utc::now();
+
+    // Create a reqwest client for making API calls. Reqwest clients are
+    // a simple arc around an inner client type, so this is cheaply cloneable
     let http_client = reqwest::Client::builder().build().unwrap();
 
     // Get an auth token
@@ -75,16 +85,17 @@ async fn run(args: Args) {
         consumer_secret: args.consumer_secret,
     };
 
-    // TODO: Wrap this in an Arc
+    // TODO: Wrap this in an Arc? It's ~120 bytes, but copying that might be
+    // cheaper than atomic operations?
     let token = auth::generate_bearer_token(&http_client, &credentials)
         .await
         .expect("Couldn't get a bearer token");
 
     // Route: /
-    let root = warp::path::end().map(move || warp::reply::html(home));
+    let root = warp::path::end().map(move || warp::reply::html(home.clone()));
 
     // Route: /faq
-    let faq = warp::path!("faq").map(move || warp::reply::html(faq));
+    let faq = warp::path!("faq").map(move || warp::reply::html(faq.clone()));
 
     // Route: /thread/{thread_id}
     let thread = warp::path!("thread" / u64).and_then(move |tweet_id| {

@@ -1,26 +1,25 @@
-import { fetchElementsByClass, fetchElementById } from "./common";
+import { fetchElementsByClass, fetchElementById, promiseChain } from "./common";
 import { error, time } from "console";
 import { settings } from "cluster";
 
 // This is adapted from twitter's recommended installation script:
 // https://developer.twitter.com/en/docs/twitter-for-websites/javascript-api/guides/set-up-twitter-for-websites
 //
-// It returns a promise that resolves to the `Twitter` object once it's loaded.
-const twitter_widgets: () => Promise<Twitter> = () =>
-  new Promise((resolve) => {
-    let twt = window.twttr;
+// This is a Promise that resolves to the `Twitter` object once it's loaded.
+const twitter_widgets: Promise<Twitter> = new Promise((resolve) => {
+  let twt = window.twttr;
 
-    if (!twt) {
-      const newTwttr: { _e: Array<any> } & TwitterLike = {
-        _e: [],
-        ready: (f) => newTwttr._e.push(f),
-      };
+  if (!twt) {
+    const newTwttr: { _e: Array<(twttr: Twitter) => void> } & TwitterLike = {
+      _e: [],
+      ready: (f) => newTwttr._e.push(f),
+    };
 
-      twt = window.twttr = newTwttr;
-    }
+    twt = window.twttr = newTwttr;
+  }
 
-    twt.ready((twttr) => resolve(twttr));
-  });
+  twt.ready((twttr) => resolve(twttr));
+});
 
 // Wrapper for twttr.widgets.createTweet that throws an error in the event of
 // a failure.
@@ -29,7 +28,7 @@ const createThreadItem = (
   element: HTMLElement,
   options?: TwitterTweetWidgetOptions
 ) =>
-  twitter_widgets()
+  twitter_widgets
     .then((twttr) => twttr.widgets.createTweet(tweet_id, element, options))
     .then((e) => {
       if (e == null) {
@@ -43,6 +42,12 @@ Promise.all([
   fetchElementsByClass("tweet-container"),
   fetchElementById("thread-end-message"),
 ]).then(([tweet_containers, end_element]) => {
+  // This promise chain helps schedule the loading of tweets via createTweet.
+  // If we load a LOT of tweets all at once (like, 100), it takes a very long
+  // time for anything to show up on the page, so we rate-limit the number of
+  // simultaneous loads.
+  let scheduleTweetLoad = promiseChain(4);
+
   // For each tweet container, use twttr.widgets to create a tweet widget
   // inside of it. If that fails, show an error in that slot. Additionally,
   // immediately hide the event; we will later unhide them in order to
@@ -53,27 +58,29 @@ Promise.all([
     if (tweet_id == null)
       throw new Error("Tweet container didn't have a data-tweet-id attribute");
 
-    const loadTask = createThreadItem(tweet_id, element, {
-      align: "center",
-      conversation: "none",
-    })
-      .catch((e) => {
-        // There exists a pre-rendered but hidden element that indicates an
-        // error loading the tweet. If there was *actually* an error loading
-        // the tweet, unhide it.
-        Array.from(element.getElementsByClassName("tweet-failure")).forEach(
-          (errorElement) => {
-            errorElement.classList.remove("hidden");
-          }
-        );
+    const loadTask = scheduleTweetLoad(() =>
+      createThreadItem(tweet_id, element, {
+        align: "center",
+        conversation: "none",
       })
-      .then(() => {
-        // Once the tweet has loaded, immediately hide the container. We can't
-        // have it be hidden before the tweet loads; for some reason, the
-        // twitter widgets API does work properly when you load inside a
-        // display:hidden
-        element.classList.add("hidden");
-      });
+        .finally(() => {
+          // Once the tweet has loaded, immediately hide the container. We can't
+          // have it be hidden before the tweet loads; for some reason, the
+          // twitter widgets API does work properly when you load inside a
+          // display:hidden
+          element.classList.add("hidden");
+        })
+        .catch((e) => {
+          // There exists a pre-rendered but hidden element that indicates an
+          // error loading the tweet. If there was *actually* an error loading
+          // the tweet, unhide it.
+          Array.from(element.getElementsByClassName("tweet-failure")).forEach(
+            (errorElement) => {
+              errorElement.classList.remove("hidden");
+            }
+          );
+        })
+    );
 
     return { element, loadTask };
   });

@@ -2,7 +2,8 @@
  * Script related to running & styling the search bar
  */
 
-import { classNames, requireChanged, fetchElementsByIds } from "./common";
+import { requireChanged, fetchElementsByIds } from "./common";
+import { settings } from "cluster";
 
 const tweetRegex = /^\s*(?:(?:https?:\/\/)?(?:(?:www|mobile)\.)?twitter\.com\/\w+\/status\/)?(\d{1,24})(?:[?#]\S*)?\s*$/;
 
@@ -21,37 +22,21 @@ fetchElementsByIds(
     const isEmpty = searchText === "";
     const isValid = tweetId != null;
 
-    const buttonClass = classNames({
-      button: true,
-      "is-link": true,
-      transition: true,
-    });
-
-    const textInputClass = classNames({
-      input: true,
-      transition: true,
-      "is-success": !isEmpty && isValid,
-      "is-danger": !isEmpty && !isValid,
-    });
-
-    const iconClass = classNames({
-      fas: true,
-      "fa-check": isValid,
-      "fa-times": !isValid,
-    });
-
-    threadButton.className = buttonClass;
-    textField.className = textInputClass;
-    iconElement.className = iconClass;
-    iconElement.style.display = isEmpty ? "none" : "";
+    threadButton.toggleAttribute("disabled", !isValid);
 
     if (isValid) {
       threadButton.setAttribute("href", `/thread/${tweetId}`);
-      threadButton.removeAttribute("disabled");
     } else {
       threadButton.removeAttribute("href");
-      threadButton.setAttribute("disabled", "");
     }
+
+    textField.classList.toggle("is-success", !isEmpty && isValid);
+    textField.classList.toggle("is-danger", !isEmpty && !isValid);
+
+    iconElement.classList.toggle("fas", !isEmpty);
+    iconElement.classList.toggle("fa-check", isValid && !isEmpty);
+    iconElement.classList.toggle("fa-times", !isValid && !isEmpty);
+    iconElement.style.display = isEmpty ? "none" : "";
   });
 
   textField.addEventListener("input", (event) => {

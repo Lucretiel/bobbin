@@ -1,23 +1,8 @@
-use crate::twitter::{self, auth::Token, Tweet, TweetId};
-
 use std::{cmp, collections::HashMap, sync::Arc};
 
-use twitter::{User, UserId};
-
-#[derive(Debug, Clone)]
-pub enum ThreadItem {
-    Missing(TweetId),
-    Tweet(Tweet),
-}
-
-impl ThreadItem {
-    pub fn tweet_id(&self) -> TweetId {
-        match *self {
-            ThreadItem::Missing(id) => id,
-            ThreadItem::Tweet(ref tweet) => tweet.id,
-        }
-    }
-}
+use super::auth::Token;
+use super::{Tweet, TweetId, User, UserHandle, UserId};
+use crate::twitter;
 
 #[derive(Debug, Clone)]
 pub enum ThreadAuthor {
@@ -26,18 +11,29 @@ pub enum ThreadAuthor {
 }
 
 #[derive(Debug, Clone)]
+pub struct Meta {
+    pub description: String,
+    pub image_url: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct Thread {
-    items: Vec<ThreadItem>,
+    items: Vec<TweetId>,
     author: ThreadAuthor,
+    meta: Option<Meta>,
 }
 
 impl Thread {
-    pub fn items(&self) -> &[ThreadItem] {
+    pub fn items(&self) -> &[TweetId] {
         &self.items
     }
 
     pub fn author(&self) -> &ThreadAuthor {
         &self.author
+    }
+
+    pub fn meta(&self) -> Option<&Meta> {
+        self.meta.as_ref()
     }
 }
 
@@ -48,6 +44,13 @@ enum TweetLookupResult {
 }
 
 impl TweetLookupResult {
+    fn tweet_id(&self) -> TweetId {
+        match *self {
+            TweetLookupResult::FoundTweet(ref tweet) => tweet.id,
+            TweetLookupResult::MissingTweet(id) => id,
+        }
+    }
+
     fn previous_tweet_id(&self) -> Option<TweetId> {
         match *self {
             TweetLookupResult::MissingTweet(..) => None,
@@ -64,7 +67,7 @@ pub async fn get_thread(
 ) -> reqwest::Result<Thread> {
     // Threads are constructed from back to front; thread is populated,
     // then reversed
-    let mut thread: Vec<ThreadItem> = Vec::new();
+    let mut thread_items: Vec<TweetLookupResult> = Vec::new();
 
     // As a key optimization, both for performance and for rate limiting, we
     // fetch tweet author timelines, under the assumption that tweets made
@@ -107,10 +110,7 @@ pub async fn get_thread(
 
         let prev_id = tweet.previous_tweet_id();
 
-        thread.push(match tweet {
-            TweetLookupResult::FoundTweet(tweet) => ThreadItem::Tweet(tweet),
-            TweetLookupResult::MissingTweet(id) => ThreadItem::Missing(id),
-        });
+        thread_items.push(tweet);
 
         if head == Some(current_tweet_id) {
             break;
@@ -122,16 +122,53 @@ pub async fn get_thread(
         }
     }
 
-    thread.reverse();
+    // Reverse the tweet IDs to get our actual thread
+    let thread: Vec<TweetId> = thread_items
+        .iter()
+        .map(|item| item.tweet_id())
+        .rev()
+        .collect();
 
-    let author = thread_author(thread.iter().filter_map(|item| match item {
-        ThreadItem::Tweet(tweet) => Some(&tweet.author),
+    // Decide who the author is
+    let author = thread_author(thread_items.iter().filter_map(|item| match *item {
+        TweetLookupResult::FoundTweet(ref tweet) => Some(&tweet.author),
         _ => None,
     }));
+
+    // Apply meta stuff.
+    // - The description is the content of the first tweet
+    // - The image is the image in the first tweet, or if there is none, the
+    //   author's image, or if there's no author, the image of the first person
+    //   in the conversation
+    let meta = thread_items
+        .iter()
+        .rev()
+        .filter_map(|item| match *item {
+            TweetLookupResult::FoundTweet(ref tweet) => Some(tweet),
+            _ => None,
+        })
+        .next()
+        .map(|tweet| {
+            // TODO: Arc all these strings
+            let description = tweet.text.clone();
+            let image_url = match tweet.image_url {
+                Some(ref url) => url.clone(),
+                None => match author {
+                    ThreadAuthor::Author(ref thread_author) => thread_author.image_url.clone(),
+                    ThreadAuthor::Conversation => tweet.author.image_url.clone(),
+                },
+            };
+
+            Meta {
+                description,
+                image_url,
+            }
+        });
 
     Ok(Thread {
         items: thread,
         author,
+        meta,
     })
 }
 

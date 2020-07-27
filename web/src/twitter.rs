@@ -28,17 +28,23 @@ impl TweetId {
     }
 
     pub fn new(id: u64) -> Self {
-        TweetId(id)
+        Self(id)
     }
 }
 
 // TODO: convert this to NonZeroU64 so that optionals don't take up SIXTEEN
 // BYTES.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct UserId(u64);
+pub struct UserId(pub(self) u64);
+
+impl UserId {
+    pub fn new(id: u64) -> Self {
+        Self(id)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct UserHandle(String);
+pub struct UserHandle(pub(self) String);
 
 impl AsRef<str> for UserHandle {
     fn as_ref(&self) -> &str {
@@ -55,6 +61,9 @@ pub struct User {
 
     #[serde(rename = "screen_name")]
     pub handle: UserHandle,
+
+    #[serde(rename = "profile_image_url_https")]
+    pub image_url: String,
 }
 
 /// Helper struct for normalizing / deduplicating User objects
@@ -102,8 +111,10 @@ pub struct ReplyInfo {
 #[derive(Debug, Clone)]
 pub struct Tweet {
     pub id: TweetId,
+    pub text: String,
     pub author: Arc<User>,
     pub reply: Option<ReplyInfo>,
+    pub image_url: Option<String>,
 }
 
 impl Tweet {
@@ -118,8 +129,24 @@ impl Tweet {
                 }
             },
             author: user_table.get_user(raw.author),
+            text: raw.text,
+            image_url: raw
+                .entities
+                .and_then(|e| e.media.into_iter().next())
+                .map(|raw| raw.url),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawMedia {
+    #[serde(rename = "media_url_https")]
+    url: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawEntities {
+    media: Vec<RawMedia>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -129,11 +156,16 @@ struct RawTweet {
     #[serde(rename = "user")]
     pub author: User,
 
+    pub text: String,
+
     #[serde(rename = "in_reply_to_status_id")]
     pub reply_id: Option<TweetId>,
 
     #[serde(rename = "in_reply_to_user_id")]
     pub reply_author_id: Option<UserId>,
+
+    #[serde(rename = "extended_entities")]
+    entities: Option<RawEntities>,
 }
 
 const LOOKUP_TWEETS_URL: &'static str = "https://api.twitter.com/1.1/statuses/lookup.json";
