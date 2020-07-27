@@ -17,7 +17,7 @@ hyper = "0.13.7"
 joinery = "2.0.0"
 lazy_format= { version = "1.8.3", features = ["horrorshow"] }
 paw = "1.0.0"
-reqwest = { version = "0.10.1", features = ["json"] }
+reqwest = { version = "0.10.1", features = ["json", "rustls-tls"] }
 secrecy = { version = "0.7.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 structopt = { version = "0.3.15", features = [ "paw" ] }
