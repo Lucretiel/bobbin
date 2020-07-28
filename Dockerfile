@@ -30,7 +30,13 @@ RUN ["yarn", "run", "webpack", "--prod"]
 RUN ["yarn", "run", "css-build"]
 RUN mkdir static/webfonts && cp node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid* static/webfonts/
 
-FROM phusion/baseimage:bionic-1.0.0
+# TODO: figure out how to correctly use baseimage
+# TODO: or use dumbinit
+# FROM phusion/baseimage:bionic-1.0.0
+FROM alpine:latest
 WORKDIR /bobbin
 COPY --from=web /bobbin-web/target/release/bobbin .
 COPY --from=frontend /bobbin-frontend/static ./static
+
+EXPOSE 8000/tcp
+CMD /bobbin/bobbin
