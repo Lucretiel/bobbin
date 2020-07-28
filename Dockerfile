@@ -33,10 +33,10 @@ RUN mkdir static/webfonts && cp node_modules/@fortawesome/fontawesome-free/webfo
 # TODO: figure out how to correctly use baseimage
 # TODO: or use dumbinit
 # FROM phusion/baseimage:bionic-1.0.0
-FROM alpine:latest
+FROM debian:stable-slim
 WORKDIR /bobbin
 COPY --from=web /bobbin-web/target/release/bobbin .
 COPY --from=frontend /bobbin-frontend/static ./static
 
 EXPOSE 8000/tcp
-CMD /bobbin/bobbin
+CMD ./bobbin
