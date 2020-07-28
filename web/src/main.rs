@@ -16,11 +16,11 @@ use futures::FutureExt;
 use horrorshow::prelude::*;
 use redis;
 use reqwest;
-use secrecy::{Secret, SecretString};
+use secrecy::SecretString;
 use structopt;
 use warp::{self, Filter};
 
-use twitter::{auth, TweetId};
+use twitter::{api::TweetId, auth};
 
 /// Implements the CLI secret parsing strategy. The string is returned directly,
 /// unless it starts with '@', in which case it treats the str as a path

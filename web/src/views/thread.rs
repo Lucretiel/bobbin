@@ -1,9 +1,9 @@
 use crate::{
     social_tags,
     twitter::{
+        api::TweetId,
         auth,
         thread::{get_thread, Thread, ThreadAuthor},
-        TweetId,
     },
     views::base::base_template,
 };

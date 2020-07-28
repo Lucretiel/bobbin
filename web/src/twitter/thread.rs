@@ -1,8 +1,9 @@
 use std::{cmp, collections::HashMap, sync::Arc};
 
-use super::auth::Token;
-use super::{Tweet, TweetId, User, UserHandle, UserId};
-use crate::twitter;
+use super::{
+    api::{self, Tweet, TweetId, User, UserId},
+    auth::Token,
+};
 
 #[derive(Debug, Clone)]
 pub enum ThreadAuthor {
@@ -61,6 +62,9 @@ pub async fn get_thread(
     // results of those cache lookups are stored here.
     let mut tweet_box: HashMap<TweetId, Tweet> = HashMap::new();
 
+    // See the twitter module docs for why we use a UserTable.
+    let mut user_table = api::UserTable::new();
+
     let mut current_tweet_id = tail;
 
     loop {
@@ -72,7 +76,7 @@ pub async fn get_thread(
             Some(cached_tweet) => TweetLookupResult::FoundTweet(cached_tweet.clone()),
 
             // TODO: Redis lookup here, before the API call
-            None => match twitter::get_tweet(client, token, current_tweet_id).await? {
+            None => match api::get_tweet(client, token, current_tweet_id, &mut user_table).await? {
                 Some(tweet) => {
                     // Pre-fetch the reply author's recent tweets, as described
                     // above
@@ -80,11 +84,16 @@ pub async fn get_thread(
                     // the get_user_tweets API can't search arbitrarily far
                     // back in time. This means that
                     if let Some(ref reply) = tweet.reply {
-                        let user_tweets =
-                            twitter::get_user_tweets(client, token, reply.author, tweet.id)
-                                .await?
-                                .into_iter()
-                                .map(|tweet| (tweet.id, tweet));
+                        let user_tweets = api::get_user_tweets(
+                            client,
+                            token,
+                            reply.author,
+                            tweet.id,
+                            &mut user_table,
+                        )
+                        .await?
+                        .into_iter()
+                        .map(|tweet| (tweet.id, tweet));
                         tweet_box.extend(user_tweets);
                     }
 
