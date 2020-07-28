@@ -8,10 +8,12 @@ use crate::{
     views::base::base_template,
 };
 
+use std::{borrow::Cow, sync::Arc};
+
 use horrorshow::{html, owned_html, prelude::*};
 use lazy_format::lazy_format;
+use redis;
 use reqwest;
-use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
 struct ThreadHeader<'a> {
@@ -143,12 +145,13 @@ fn render_thread(thread: Thread) -> impl Template {
 }
 
 pub async fn thread(
-    client: reqwest::Client,
+    http_client: reqwest::Client,
+    redis_client: Option<Arc<redis::Client>>,
     token: impl auth::Token,
     tail: TweetId,
     head: Option<TweetId>,
 ) -> http::Response<hyper::Body> {
-    match get_thread(&client, &token, tail, head).await {
+    match get_thread(&http_client, &token, tail, head).await {
         Ok(thread) => {
             // TODO: Enumerate the failure mode here. It's not really documented
             // how this can fail, and I'm pretty sure it can't?

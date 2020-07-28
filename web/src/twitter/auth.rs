@@ -4,7 +4,7 @@ use std::{
 };
 
 use reqwest;
-use secrecy::{self, ExposeSecret};
+use secrecy::{self, ExposeSecret, SecretString};
 use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
 
 /// A token is something that can modify a request to make it authorized for
@@ -15,8 +15,8 @@ pub trait Token {
 
 #[derive(Debug, Clone)]
 pub struct Credentials {
-    pub consumer_key: String,
-    pub consumer_secret: secrecy::SecretString,
+    pub consumer_key: SecretString,
+    pub consumer_secret: SecretString,
 }
 
 const TOKEN_URL: &'static str = "https://api.twitter.com/oauth2/token";
@@ -68,13 +68,13 @@ pub async fn generate_bearer_token(
     #[derive(Deserialize)]
     struct TokenResponse {
         token_type: String,
-        access_token: secrecy::SecretString,
+        access_token: SecretString,
     }
 
     let result: TokenResponse = client
         .post(TOKEN_URL)
         .basic_auth(
-            &credentials.consumer_key,
+            credentials.consumer_key.expose_secret(),
             Some(credentials.consumer_secret.expose_secret()),
         )
         .header(reqwest::header::ACCEPT, "application/json")
@@ -96,7 +96,7 @@ pub async fn generate_bearer_token(
 
 #[derive(Debug, Clone)]
 pub struct BearerToken {
-    token: secrecy::SecretString,
+    token: SecretString,
 }
 
 impl Token for BearerToken {

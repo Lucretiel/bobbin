@@ -17,6 +17,7 @@ hyper = "0.13.7"
 joinery = "2.0.0"
 lazy_format= { version = "1.8.3", features = ["horrorshow"] }
 paw = "1.0.0"
+redis = { version = "0.16.0", default-features = false, features = ["aio", "r2d2", "tokio-comp"] }
 reqwest = { version = "0.10.1", features = ["json", "rustls-tls"], default-features = false }
 secrecy = { version = "0.7.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
