@@ -1,3 +1,5 @@
+//! Low level methods for the Twitter API.
+
 use std::{
     collections::hash_map::{Entry, HashMap},
     fmt::Write,
@@ -51,6 +53,8 @@ pub struct User {
     #[serde(rename = "screen_name")]
     pub handle: UserHandle,
 
+    // TODO: use a structured URI? Might be a performance penalty to parse and
+    // unparse, but type safety is nice
     #[serde(rename = "profile_image_url_https")]
     pub image_url: String,
 }
@@ -226,6 +230,8 @@ pub async fn get_tweet(
     user_table: &mut UserTable,
 ) -> Result<Option<Tweet>, reqwest::Error> {
     // TODO: Replace this with a dataloader
+    // TODO: /statuses/lookup has a separate rate limit from /statuses/show, so
+    // try both if one is rate limited.
     get_tweets(client, token, Some(tweet_id), user_table)
         .await
         .map(|tweets| tweets.get(&tweet_id).cloned())
