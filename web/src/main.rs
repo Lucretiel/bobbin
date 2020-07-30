@@ -138,11 +138,10 @@ async fn run(args: Args) {
     let faq = warp::path!("faq").map(move || warp::reply::html(faq.clone()));
 
     // Route: /thread/{thread_id}
-    let thread = warp::path!("thread" / u64).and_then(move |tweet_id| {
+    let thread = warp::path!("thread" / TweetId).and_then(move |tweet_id| {
         let http_client = http_client.clone();
         let redis_client = redis_client.clone();
         let token = token.clone();
-        let tweet_id = TweetId::new(tweet_id);
 
         views::thread(http_client, redis_client, token, tweet_id, None)
             // and_then requires a Result

@@ -1,3 +1,6 @@
+// TODO: Consider moving thread.rs out of twitter, to further clarify that
+// it's a direct dependency and sits on top of it.
+
 use std::{cmp, collections::HashMap, sync::Arc};
 
 use super::{

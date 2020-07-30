@@ -2,44 +2,105 @@
 
 use std::{
     collections::hash_map::{Entry, HashMap},
-    fmt::Write,
+    fmt::{self, Display, Formatter, Write},
+    num::NonZeroU64,
+    str::FromStr,
     sync::Arc,
 };
 
+use horrorshow::{Render, RenderMut, RenderOnce};
 use joinery::{prelude::*, separators::Comma};
 use reqwest;
 use serde::{Deserialize, Serialize};
 
-use super::auth::Token;
+use super::{auth::Token, table::DedupeTable};
 
-// TODO: use more `Raw` types to firmly establish a construction boundary;
-// only this module may create UserHandle, TweetId, etc
-// TODO: convert this to NonZeroU64 so that optionals don't take up SIXTEEN
-// BYTES.
+// TODO: TweetId and UserId are basically identical; use a macro to dedupe
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct TweetId(u64);
+pub struct TweetId(pub(super) NonZeroU64);
 
-impl TweetId {
-    pub fn as_int(&self) -> u64 {
-        self.0
+impl Display for TweetId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
+}
 
-    pub fn new(id: u64) -> Self {
-        Self(id)
+impl FromStr for TweetId {
+    type Err = <NonZeroU64 as FromStr>::Err;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(Self)
+    }
+}
+
+impl Render for TweetId {
+    fn render<'a>(&self, tmpl: &mut horrorshow::TemplateBuffer<'a>) {
+        // It's never necessary to escape digits, so skip the penalty of
+        // escaping by using raw_writer.
+        // This is infallible; any errors that occur are stored in the
+        // TemplateBuffer and handled via a side channel.
+        write!(tmpl.as_raw_writer(), "{}", self.0).unwrap();
+    }
+}
+
+impl RenderMut for TweetId {
+    #[inline]
+    fn render_mut<'a>(&mut self, tmpl: &mut horrorshow::TemplateBuffer<'a>) {
+        self.render(tmpl)
+    }
+}
+
+impl RenderOnce for TweetId {
+    #[inline]
+    fn render_once(self, tmpl: &mut horrorshow::TemplateBuffer<'_>)
+    where
+        Self: Sized,
+    {
+        self.render(tmpl)
     }
 }
 
 // TODO: convert this to NonZeroU64 so that optionals don't take up SIXTEEN
 // BYTES.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct UserId(u64);
+pub struct UserId(pub(super) NonZeroU64);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct UserHandle(String);
+impl Display for UserId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
-impl AsRef<str> for UserHandle {
-    fn as_ref(&self) -> &str {
-        self.0.as_str()
+impl FromStr for UserId {
+    type Err = <NonZeroU64 as FromStr>::Err;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(Self)
+    }
+}
+
+impl Render for UserId {
+    fn render<'a>(&self, tmpl: &mut horrorshow::TemplateBuffer<'a>) {
+        // It's never necessary to escape digits, so skip the penalty of
+        // escaping by using raw_writer.
+        // This is infallible; any errors that occur are stored in the
+        // TemplateBuffer and handled via a side channel.
+        write!(tmpl.as_raw_writer(), "{}", self.0).unwrap();
+    }
+}
+
+impl RenderMut for UserId {
+    #[inline]
+    fn render_mut<'a>(&mut self, tmpl: &mut horrorshow::TemplateBuffer<'a>) {
+        self.render(tmpl)
+    }
+}
+
+impl RenderOnce for UserId {
+    #[inline]
+    fn render_once(self, tmpl: &mut horrorshow::TemplateBuffer<'_>)
+    where
+        Self: Sized,
+    {
+        self.render(tmpl)
     }
 }
 
@@ -51,7 +112,7 @@ pub struct User {
     pub display_name: String,
 
     #[serde(rename = "screen_name")]
-    pub handle: UserHandle,
+    pub handle: String,
 
     // TODO: use a structured URI? Might be a performance penalty to parse and
     // unparse, but type safety is nice
@@ -62,46 +123,13 @@ pub struct User {
 /// Helper struct for normalizing / deduplicating User objects. The idea is
 /// that, since we're often receiving large sets of tweets from a single user,
 /// we can save a lot of space by having all the Tweets have an Arc to a
-/// single User instance. This table is therefore used to
-#[derive(Debug, Default)]
-pub struct UserTable {
-    table: HashMap<UserId, Arc<User>>,
-}
-
-impl UserTable {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Get an Arc<User> from a User (for instance, as returned from the
-    /// twitter API.) If the existing entry's username / handle don't
-    /// match the new entry, the entry is replaced, though this doesn't
-    /// change any existing references.
-    fn get_user(&mut self, user: User) -> Arc<User> {
-        match self.table.entry(user.id) {
-            Entry::Occupied(mut entry) => {
-                let existing = entry.get_mut();
-                if **existing == user {
-                    existing.clone()
-                } else {
-                    let replacement = Arc::new(user);
-                    existing.clone_from(&replacement);
-                    replacement
-                }
-            }
-            Entry::Vacant(entry) => {
-                let arc = Arc::new(user);
-                entry.insert(arc.clone());
-                arc
-            }
-        }
-    }
-}
+/// single User instance.
+pub(super) type UserTable = DedupeTable<UserId, User>;
 
 // TODO: Replace all these strings with bytes::Bytes, which is a reference
 // counted buffer that's cheaper to clone.
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReplyInfo {
     pub id: TweetId,
     pub author: UserId,
@@ -127,7 +155,7 @@ impl Tweet {
                     panic!("invalid response from twitter API: had a reply author but no reply id")
                 }
             },
-            author: user_table.get_user(raw.author),
+            author: user_table.dedup_item(raw.author.id, raw.author),
             text: raw.text,
             image_url: raw
                 .entities

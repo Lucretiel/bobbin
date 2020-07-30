@@ -29,7 +29,7 @@ impl Render for ThreadHeader<'_> {
                 }
             }
             ThreadAuthor::Author(author) => {
-                let handle = author.handle.as_ref();
+                let handle = author.handle.as_str();
                 let author_url = lazy_format!("https://twitter.com/{}", handle);
                 tmpl << html! {
                     h3(class="author-header") {
@@ -118,10 +118,10 @@ fn render_thread(thread: Thread) -> impl Template {
                 div(class="column") {
                     div(class="tweet-list") {
                         @ for item in items {
-                            div(class="tweet-container", data-tweet-id=item.as_int()) {
+                            div(class="tweet-container", data-tweet-id=item) {
                                 div(class="fake-tweet tweet-failure hidden") {
                                     :"Error: failed to load tweet (tweet ID: ";
-                                    :item.as_int();
+                                    :item;
                                     :")";
                                 }
                             }
@@ -168,11 +168,7 @@ pub async fn thread(
         Err(err) => {
             // TODO: there are a lot of specific error cases to handle here.
             // For now we show this rudimentary error page.
-            let page = format!(
-                "Error fetching thread (thread ID: {}): {}",
-                tail.as_int(),
-                err
-            );
+            let page = format!("Error fetching thread (thread ID: {}): {}", tail, err);
             http::Response::builder()
                 .status(http::StatusCode::INTERNAL_SERVER_ERROR)
                 .header(http::header::CONTENT_TYPE, "text/plain")
