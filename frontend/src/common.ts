@@ -1,7 +1,4 @@
 // Return a future that resolves when DOMContentLoaded fires, or if the
-
-import { settings } from "cluster";
-
 // page is already loaded
 export const pageReady: Promise<void> = new Promise((resolve) => {
   if (document.readyState === "loading") {
@@ -63,22 +60,18 @@ export const promiseChain = <T>(maxConcurrent: number) => {
     }
   };
 
-  return (userRunner: () => PromiseLike<T>) =>
-    new Promise((resolve) => {
-      const runner = () => {
-        // Promisify the userRunner, handle thrown exceptions
-        resolve(
-          new Promise((resolveTask) => resolveTask(userRunner())).finally(
-            taskComplete
-          )
-        );
-      };
+  return (userRunner: () => PromiseLike<T>) => {
 
-      if (runningTasks >= maxConcurrent) {
-        queue.push(runner);
-      } else {
+    const task = new Promise(resolve => {
+      if (runningTasks < maxConcurrent) {
         runningTasks += 1;
-        runner();
+        resolve(userRunner())
+      } else {
+        // Handle exceptions thrown from userRunner
+        queue.push(() => resolve(new Promise(resolve => resolve(userRunner()))))
       }
     });
+
+    return task.finally(taskComplete)
+  }
 };
