@@ -8,7 +8,14 @@
 // inside of horrorshow.
 #[macro_export]
 macro_rules! social_tags {
-    ($($(f : $og_key:ident)? $(t : $twitter_key:ident)? $(m:$meta_key:ident)? $(s:$social_key:ident)? : $content:expr);* $(;)?) => {
+    ($(
+        $(f : $og_key:ident)?
+        $(t : $twitter_key:ident)?
+        $(m : $meta_key:ident)?
+        $(s : $social_key:ident)?
+
+        : $content:expr
+    );* $(;)?) => {
         horrorshow::owned_html! {$(
             $( meta( property=concat!("og:", stringify!($og_key)), content=$content ); )?
             $( meta( name=concat!("twitter:", stringify!($twitter_key)), content=$content ); )?

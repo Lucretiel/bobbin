@@ -3,34 +3,6 @@ use crate::social_tags;
 
 use horrorshow::{html, owned_html, prelude::*};
 
-#[derive(Debug, Clone)]
-pub struct Entry<A: Render> {
-    slug: &'static str,
-    question: &'static str,
-    answer: A,
-}
-
-impl<A: Render> Render for Entry<A> {
-    fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
-        tmpl << html! {}
-    }
-}
-
-impl<A: Render> RenderMut for Entry<A> {
-    fn render_mut<'a>(&mut self, tmpl: &mut TemplateBuffer<'a>) {
-        self.render(tmpl)
-    }
-}
-
-impl<A: Render> RenderOnce for Entry<A> {
-    fn render_once(self, tmpl: &mut TemplateBuffer<'_>)
-    where
-        Self: Sized,
-    {
-        self.render(tmpl)
-    }
-}
-
 macro_rules! question_list {
     ($(slug:$slug:expr, question:$question:expr, answer:$answer:expr;)*) => {
         owned_html! {

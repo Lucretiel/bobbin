@@ -1,14 +1,10 @@
-use std::borrow::Cow;
-
 use horrorshow::{helper::doctype, owned_html, prelude::*};
 
 pub(super) fn base_template<'a>(
-    title: impl Into<Cow<'static, str>>,
+    title: impl AsRef<str>,
     meta: impl RenderOnce,
     main_content: impl RenderOnce,
 ) -> impl Template {
-    let title = title.into();
-
     owned_html! {
         : doctype::HTML;
         html(prefix="og: https://ogp.me/ns#") {

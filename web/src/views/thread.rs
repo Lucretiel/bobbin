@@ -146,7 +146,7 @@ fn render_thread(thread: Thread) -> impl Template {
 
 pub async fn thread(
     http_client: reqwest::Client,
-    redis_client: Option<Arc<redis::Client>>,
+    redis_client: Option<&redis::aio::Connection>,
     token: impl auth::Token,
     tail: TweetId,
     head: Option<TweetId>,

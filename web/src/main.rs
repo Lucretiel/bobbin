@@ -1,23 +1,22 @@
 // TODO: Convert these to mod.rs
-mod twitter;
-mod views;
+pub mod redis;
+pub mod serialize_map;
+pub mod table;
+pub mod thread;
+pub mod twitter;
+pub mod views;
 
 use std::{
-    convert, fs,
-    io::{self, Read},
+    convert, fs, io,
     net::IpAddr,
     path::{self, PathBuf},
     sync::Arc,
 };
 
 use bytes::Bytes;
-use chrono;
 use futures::FutureExt;
 use horrorshow::prelude::*;
-use redis;
-use reqwest;
 use secrecy::SecretString;
-use structopt;
 use warp::{self, Filter};
 
 use twitter::{api::TweetId, auth};
@@ -25,17 +24,14 @@ use twitter::{api::TweetId, auth};
 /// Implements the CLI secret parsing strategy. The string is returned directly,
 /// unless it starts with '@', in which case it treats the str as a path
 /// to a file containing the secret.
+///
+/// This function performs blocking io, which is okay because it's only used at
+/// program load time (during CLI argument parsing)
 fn parse_secret(input: &str) -> io::Result<SecretString> {
-    if input.as_bytes().first().copied() == Some(b'@') {
-        let path = &input[1..];
-        let path = path::Path::new(path);
-        let mut file = fs::File::open(path)?;
-        let mut secret = String::new();
-        let _ = file.read_to_string(&mut secret)?;
-        Ok(SecretString::new(secret))
-    } else {
-        Ok(SecretString::new(input.to_string()))
-    }
+    Ok(SecretString::new(match input.as_bytes().first().copied() {
+        Some(b'@') => fs::read_to_string(path::Path::new(&input[1..]))?,
+        _ => input.to_owned(),
+    }))
 }
 
 #[derive(Debug, Clone, structopt::StructOpt)]
@@ -78,10 +74,10 @@ struct Args {
     ///
     /// Make sure to use this in production to ensure we don't run into
     /// Twitter API rate limiting
-    #[structopt(short, long, parse(try_from_str=redis::Client::open))]
+    #[structopt(short, long, parse(try_from_str=::redis::Client::open))]
     // It's fine to parse this directly because redis::Client::open doesn't
     // actually do any network operations, it just fallibly parses the input
-    redis: Option<redis::Client>,
+    redis: Option<::redis::Client>,
 }
 
 /// Type inference helper function for `warp`. `warp` requires async handlers
@@ -99,13 +95,11 @@ fn infallible<T>(thing: T) -> Result<T, convert::Infallible> {
 async fn run(args: Args) {
     // TODO: Check that static_dir exists
 
-    // Pre-render the pages that never change. We allocate them into strings,
-    // then deliberately memory leak them so that we get &'static str
+    // Pre-render the pages that never change.
     let home = Bytes::from(views::home().into_string().unwrap());
     let faq = Bytes::from(views::faq().into_string().unwrap());
 
-    // Server start time. This is used for cache headers.
-    let server_start = chrono::Utc::now();
+    // TODO: caches, especially for static content
 
     // Create a reqwest client for making API calls. Reqwest clients are
     // a simple arc around an inner client type, so this is cheaply cloneable
@@ -113,9 +107,7 @@ async fn run(args: Args) {
     let http_client = reqwest::Client::builder().build().unwrap();
 
     // Create our redis client
-    // TODO: Use r2d2 connection pool. Need to create an async wrapper for it
-    // (consider stjepang/blocking)
-
+    // TODO: Use bb8 connection pool.
     let redis_client = args.redis.map(Arc::new);
 
     // Get an auth token
@@ -143,9 +135,15 @@ async fn run(args: Args) {
         let redis_client = redis_client.clone();
         let token = token.clone();
 
-        views::thread(http_client, redis_client, token, tweet_id, None)
-            // and_then requires a Result
-            .map(infallible)
+        views::thread(
+            http_client,
+            redis_client.map(|_client| todo!()),
+            token,
+            tweet_id,
+            None,
+        )
+        // and_then requires a Result
+        .map(infallible)
     });
 
     // Route: /static/...

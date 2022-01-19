@@ -1,10 +1,18 @@
 {
-    "cSpell.words": [
-        "blockquote",
-        "horrorshow",
-        "opengraph",
-        "reqwest",
-        "structopt",
-        "twttr"
-    ]
+  "cSpell.words": [
+    "blockquote",
+    "dedup",
+    "dedupe",
+    "horrorshow",
+    "hoverlink",
+    "idents",
+    "opengraph",
+    "reqwest",
+    "SADD",
+    "smembers",
+    "structopt",
+    "thiserror",
+    "twttr",
+    "unparse"
+  ]
 }

@@ -1,4 +1,9 @@
-use std::{collections::HashMap, default::Default, hash::Hash, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    default::Default,
+    hash::Hash,
+    sync::Arc,
+};
 
 /// Helper struct for normalizing / deduplicating User objects. The idea is
 /// that, since we're often receiving large sets of tweets from a single user,
@@ -18,7 +23,7 @@ impl<K: Eq + Hash, V: Eq> DedupeTable<K, V> {
 
     pub fn dedup_item(&mut self, key: K, value: V) -> Arc<V> {
         match self.table.entry(key) {
-            std::collections::hash_map::Entry::Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 let existing = entry.get_mut();
                 if **existing == value {
                     existing.clone()
@@ -28,7 +33,7 @@ impl<K: Eq + Hash, V: Eq> DedupeTable<K, V> {
                     replacement
                 }
             }
-            std::collections::hash_map::Entry::Vacant(entry) => {
+            Entry::Vacant(entry) => {
                 let arc = Arc::new(value);
                 entry.insert(arc.clone());
                 arc

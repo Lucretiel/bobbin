@@ -41,6 +41,8 @@ export const fetchElementById = (id: string) =>
 export const fetchElementsByIds = (...ids: string[]) =>
   Promise.all(ids.map((id) => fetchElementById(id)));
 
+  // Returns a future that waits for the document to be loaded, then fetches
+// a list of elements by class, returning them as an array.
 export const fetchElementsByClass = (className: string) =>
   pageReady.then(
     () =>
@@ -61,14 +63,13 @@ export const promiseChain = <T>(maxConcurrent: number) => {
   };
 
   return (userRunner: () => PromiseLike<T>) => {
-
     const task = new Promise(resolve => {
       if (runningTasks < maxConcurrent) {
         runningTasks += 1;
         resolve(userRunner())
       } else {
         // Handle exceptions thrown from userRunner
-        queue.push(() => resolve(new Promise(resolve => resolve(userRunner()))))
+        queue.push(() => resolve(new Promise(localResolve => resolve(userRunner()))))
       }
     });
 
