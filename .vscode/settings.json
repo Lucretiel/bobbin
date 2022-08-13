@@ -12,6 +12,7 @@
     "smembers",
     "structopt",
     "thiserror",
+    "tmpl",
     "twttr",
     "unparse"
   ]

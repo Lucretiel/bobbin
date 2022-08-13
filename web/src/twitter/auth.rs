@@ -1,11 +1,10 @@
-use std::{
-    error::Error,
-    fmt::{self, Display, Formatter},
-};
+use once_cell::sync::OnceCell;
+use secrecy::{self, ExposeSecret as _, SecretString};
+use serde::Deserialize;
+use thiserror::Error;
+use url::Url;
 
-use reqwest;
-use secrecy::{self, ExposeSecret, SecretString};
-use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
+use crate::serialize_static_map;
 
 /// A token is something that can modify a request to make it authorized for
 /// an API call
@@ -13,84 +12,65 @@ pub trait Token {
     fn apply(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
 }
 
+/// Secret credentials provided by twitter to the service owner (the owner of
+/// bobbin itself)
 #[derive(Debug, Clone)]
 pub struct Credentials {
     pub consumer_key: SecretString,
     pub consumer_secret: SecretString,
 }
 
-const TOKEN_URL: &'static str = "https://api.twitter.com/oauth2/token";
+const TOKEN_URL: &str = "https://api.twitter.com/oauth2/token";
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum BearerTokenError {
-    HTTPError(reqwest::Error),
+    #[error("HTTP error while creating bearer token")]
+    HTTPError(#[from] reqwest::Error),
+
+    #[error("token_type was not 'bearer'")]
     NonBearerError,
-}
-
-impl Display for BearerTokenError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            BearerTokenError::HTTPError(err) => write!(f, "HTTP error: {}", err),
-            BearerTokenError::NonBearerError => write!(f, "token_type was not 'bearer'"),
-        }
-    }
-}
-
-impl Error for BearerTokenError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            BearerTokenError::HTTPError(err) => Some(err),
-            BearerTokenError::NonBearerError => None,
-        }
-    }
-}
-
-impl From<reqwest::Error> for BearerTokenError {
-    fn from(err: reqwest::Error) -> Self {
-        BearerTokenError::HTTPError(err)
-    }
 }
 
 pub async fn generate_bearer_token(
     client: &reqwest::Client,
     credentials: &Credentials,
 ) -> Result<BearerToken, BearerTokenError> {
-    struct GrantTypeFormData;
+    #[derive(Deserialize)]
+    enum TokenType {
+        #[serde(rename = "bearer")]
+        Bearer,
 
-    impl Serialize for GrantTypeFormData {
-        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-            let mut map = serializer.serialize_map(Some(1))?;
-            map.serialize_entry("grant_type", "client_credentials")?;
-            map.end()
-        }
+        #[serde(other)]
+        Unknown,
     }
 
     #[derive(Deserialize)]
     struct TokenResponse {
-        token_type: String,
+        token_type: TokenType,
         access_token: SecretString,
     }
 
-    let result: TokenResponse = client
+    let response: TokenResponse = client
         .post(TOKEN_URL)
         .basic_auth(
             credentials.consumer_key.expose_secret(),
             Some(credentials.consumer_secret.expose_secret()),
         )
         .header(reqwest::header::ACCEPT, "application/json")
-        .form(&GrantTypeFormData)
+        .form(&serialize_static_map!(
+            grant_type: "client_credentials",
+        ))
         .send()
         .await?
         .error_for_status()?
         .json()
         .await?;
 
-    if result.token_type != "bearer" {
-        Err(BearerTokenError::NonBearerError)
-    } else {
-        Ok(BearerToken {
-            token: result.access_token,
-        })
+    match response.token_type {
+        TokenType::Bearer => Ok(BearerToken {
+            token: response.access_token,
+        }),
+        TokenType::Unknown => Err(BearerTokenError::NonBearerError),
     }
 }
 
@@ -102,6 +82,17 @@ pub struct BearerToken {
 impl Token for BearerToken {
     fn apply(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         req.bearer_auth(self.token.expose_secret())
+    }
+}
+
+/// Helper trait to apply tokens to requests, implemented for `RequestBuilder`.
+pub trait ApplyToken: Sized {
+    fn apply_token(self, token: &impl Token) -> Self;
+}
+
+impl ApplyToken for reqwest::RequestBuilder {
+    fn apply_token(self, token: &impl Token) -> Self {
+        token.apply(self)
     }
 }
 

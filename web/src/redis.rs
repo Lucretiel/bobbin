@@ -18,28 +18,24 @@ User keys expire because users can change their profile pic etc
 // Unlike with twitter::api, our types here don't include their own IDs. This
 // better reflects the schema, and also lends itself better to the HashMap
 // design that permeates this interface.
-//
-// One thing we'd like to add in the future is an additional way to associate
-// groups of tweets so that we don't need to make numerous round trips to redis
-// when loading a thread
 
 use std::{
     collections::{HashMap, HashSet},
     fmt::{self, Display, Formatter, Write as FmtWrite},
-    hash::{self, Hash},
+    hash::Hash,
     iter,
-    ops::Deref,
 };
 
-use itertools::Itertools;
-use redis::{self, aio::ConnectionLike, ErrorKind as RedisErrorKind, RedisError};
+use itertools::Itertools as _;
+use redis::{self, ErrorKind as RedisErrorKind, RedisError};
 use rmp_serde::{self, decode::Error as MpDeError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use url::Url;
 
 use crate::{
     thread::Thread,
-    twitter::api::{ReplyInfo, Tweet, TweetId, User, UserId},
+    twitter::api::{ReplyInfo, Tweet, TweetId, UserId},
 };
 
 mod schema {
@@ -90,13 +86,14 @@ impl Thread {
 // TODO: find a convenient abstraction for reading CachedUser and CachedTweet
 // from redis responses (wh)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CachedUser<S: AsRef<str>> {
+pub struct CachedUser<S, U> {
     pub display_name: S,
     pub handle: S,
-    pub image_url: S,
+    pub image_url: U,
 }
 
-pub type OwnedCachedUser = CachedUser<String>;
+pub type OwnedCachedUser = CachedUser<String, Url>;
+type BorrowedCachedUser<'a> = CachedUser<&'a str, &'a Url>;
 
 // TODO: This schema meta-design makes no accounting for potential schema
 // changes. For now we'll plan to do the ugly thing and erase the redis cache
@@ -106,42 +103,16 @@ pub type OwnedCachedUser = CachedUser<String>;
 // slightly more resilient to schema changes (like add / remove keys)
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CachedTweet<S: AsRef<str>> {
+pub struct CachedTweet<S, U> {
     pub author_id: UserId,
     pub reply: Option<ReplyInfo>,
-    pub image_url: Option<S>,
+    pub image_url: Option<U>,
     pub text: S,
     pub cluster_id: ClusterId,
 }
 
-pub type OwnedCachedTweet = CachedTweet<String>;
-
-/// Helper type to hash & compare users by ID. Used to create a HashSet of
-/// unique users.
-#[derive(Debug, Clone)]
-struct UserHash<'a>(&'a User);
-
-impl Hash for UserHash<'_> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.0.id.hash(state)
-    }
-}
-
-impl PartialEq for UserHash<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.id == other.0.id
-    }
-}
-
-impl Eq for UserHash<'_> {}
-
-impl Deref for UserHash<'_> {
-    type Target = User;
-
-    fn deref(&self) -> &User {
-        self.0
-    }
-}
+pub type OwnedCachedTweet = CachedTweet<String, Url>;
+type BorrowedCachedTweet<'a> = CachedTweet<&'a str, &'a Url>;
 
 // TODO: Connection pooling
 
@@ -199,7 +170,7 @@ pub async fn save_tweets(
 
     // collect users while iterating tweets, so that at the end we'll have a
     // set of unique users.
-    let mut user_table = HashSet::new();
+    let mut user_table = HashMap::new();
 
     // TODO: confirm that these serialize calls are infallible.
     tweets.into_iter().for_each(|tweet| {
@@ -210,10 +181,10 @@ pub async fn save_tweets(
         serialize_buffer.clear();
         rmp_serde::encode::write(
             &mut serialize_buffer,
-            &CachedTweet {
+            &BorrowedCachedTweet {
                 author_id: tweet.author.id,
-                reply: tweet.reply.clone(),
-                image_url: tweet.image_url.as_deref(),
+                reply: tweet.reply,
+                image_url: tweet.image_url.as_ref(),
                 text: &tweet.text,
                 cluster_id,
             },
@@ -231,7 +202,7 @@ pub async fn save_tweets(
         cluster_add_cmd.arg(serialize_buffer.as_slice());
 
         // PART 3: Collect the user into the set
-        user_table.insert(UserHash(&tweet.author));
+        user_table.insert(tweet.author.id, tweet.author.as_ref());
     });
 
     // Add the cluster command to the pipeline
@@ -240,14 +211,14 @@ pub async fn save_tweets(
     // While that loop was looping, we created a set of users. Add a command to
     // SET each of them to the command as well. Ensure that the users are timed
     // out after 1 day.
-    user_table.iter().for_each(|user| {
+    user_table.values().for_each(|user| {
         key_buffer.clear();
         write!(key_buffer, "{}", schema::user_blob_key(user.id)).unwrap();
 
         serialize_buffer.clear();
         rmp_serde::encode::write(
             &mut serialize_buffer,
-            &CachedUser {
+            &BorrowedCachedUser {
                 display_name: &user.display_name,
                 handle: &user.handle,
                 image_url: &user.image_url,
@@ -274,10 +245,52 @@ pub struct ClusterData {
     pub users: HashMap<UserId, OwnedCachedUser>,
 }
 
+impl ClusterData {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Merge a pair of `ClusterData`s together. We assume that the argument
+    /// to this function is newer data, so its fields will always replace local
+    /// ones.
+    pub fn merge(self, newer: ClusterData) -> Self {
+        fn merge_tables<K: Eq + Hash, V>(
+            older: HashMap<K, V>,
+            newer: HashMap<K, V>,
+        ) -> HashMap<K, V> {
+            match (older.len(), newer.len()) {
+                (0, _) => newer,
+                (_, 0) => older,
+
+                // Prefer to merge into the table with more capacity
+                _ => match older.capacity() > newer.capacity() {
+                    // Newer keys unconditionally override older ones. We're inserting into
+                    // `older`, so always override
+                    true => newer.into_iter().fold(older, |mut map, (key, value)| {
+                        map.insert(key, value);
+                        map
+                    }),
+                    // Newer keys unconditionally override older ones. We're inserting into
+                    // `newer`, so only use keys that aren't already present.
+                    false => older.into_iter().fold(newer, |mut map, (key, value)| {
+                        map.entry(key).or_insert(value);
+                        map
+                    }),
+                },
+            }
+        }
+
+        ClusterData {
+            tweets: merge_tables(self.tweets, newer.tweets),
+            users: merge_tables(self.users, newer.users),
+        }
+    }
+}
+
 /// Fetch data for a tweet, along with all the other tweets in the same cluster.
 /// While it does use the cluster, this method does not attempt to separately
 /// follow reply chains, since the top-level logic (which fetches from both
-/// redis and twitter) will handle that
+/// redis and twitter) will handle that.
 pub async fn get_tweet_cluster(
     conn: &mut redis::aio::Connection,
     tweet_id: TweetId,
@@ -290,17 +303,17 @@ pub async fn get_tweet_cluster(
     //
     // Redis connection etc errors should result in some kind of retry, followed
     // by an error returned
-    let mut data = ClusterData::default();
+
+    // TODO: Provide some context to this function so it doesn't repeat work
+    // (don't need to fetch tweets for which we already have data)
 
     // Start by fetching this tweet
-    let response = conn
-        .req_packed_command(&redis::Cmd::get(
-            schema::tweet_blob_key(tweet_id).to_string(),
-        ))
-        .await?;
-
-    let tweet: OwnedCachedTweet = match response {
-        redis::Value::Nil => return Ok(data),
+    let tweet: OwnedCachedTweet = match redis::cmd("GET")
+        .arg(schema::tweet_blob_key(tweet_id).to_string())
+        .query_async(conn)
+        .await?
+    {
+        redis::Value::Nil => return Ok(ClusterData::new()),
         redis::Value::Data(blob) => rmp_serde::from_slice(&blob)?,
         _ => {
             return Err(Error::Redis(RedisError::from((
@@ -311,13 +324,11 @@ pub async fn get_tweet_cluster(
     };
 
     // Next, get all the tweet IDs for the cluster
-    let response = conn
-        .req_packed_command(&redis::Cmd::smembers(
-            schema::cluster_key(tweet.cluster_id).to_string(),
-        ))
-        .await?;
-
-    let cluster_ids: Vec<TweetId> = match response {
+    let tweet_ids_in_cluster: Vec<TweetId> = match redis::cmd("SMEMBERS")
+        .arg(schema::cluster_key(tweet.cluster_id).to_string())
+        .query_async(conn)
+        .await?
+    {
         redis::Value::Nil => vec![],
         redis::Value::Bulk(items) => items
             .into_iter()
@@ -328,26 +339,30 @@ pub async fn get_tweet_cluster(
                     "response type wasn't a blob",
                 )))),
             })
+            // TODO: Filter tweets that the *caller* already knows about
             .filter_ok(|id: &TweetId| *id != tweet_id)
             .try_collect()?,
         _ => {
             return Err(Error::Redis(RedisError::from((
                 RedisErrorKind::TypeError,
-                "response type wasn't a blob",
+                "response type wasn't an array",
             ))))
         }
     };
 
     // Next, get all the tweets in the cluster
-    let keys: Vec<String> = cluster_ids
+    let mut request = redis::cmd("MGET");
+
+    // We'll be pairing up tweet ids from `tweet_ids_in_cluster` with the
+    // tweets in this list, so we need to ensure they're the same length,
+    // so we create a list of optionals
+    let tweets: Vec<Option<OwnedCachedTweet>> = match tweet_ids_in_cluster
         .iter()
-        .map(|&id| schema::tweet_blob_key(id).to_string())
-        .collect();
-
-    let response = conn.req_packed_command(&redis::Cmd::get(keys)).await?;
-
-    // Need to build a vec of options because we need to pair with tweet IDs
-    let tweets: Vec<Option<OwnedCachedTweet>> = match response {
+        .map(|&tweet_id| schema::tweet_blob_key(tweet_id).to_string())
+        .fold(&mut request, |request, key| request.arg(key))
+        .query_async(conn)
+        .await?
+    {
         redis::Value::Bulk(items) => items
             .into_iter()
             .map(|item| match item {
@@ -369,20 +384,82 @@ pub async fn get_tweet_cluster(
         }
     };
 
-    if cluster_ids.len() != tweets.len() {
+    if tweet_ids_in_cluster.len() != tweets.len() {
         todo!()
     }
 
-    let all_tweets: HashMap<TweetId, OwnedCachedTweet> = cluster_ids
+    let all_tweets: HashMap<TweetId, OwnedCachedTweet> = tweet_ids_in_cluster
         .iter()
-        .copied()
         .zip(tweets)
-        .filter_map(|(tweet_id, maybe_tweet)| maybe_tweet.map(|tweet| (tweet_id, tweet)))
+        .filter_map(|(&tweet, maybe_tweet)| Some((tweet_id, maybe_tweet?)))
         .chain(iter::once((tweet_id, tweet)))
         .collect();
 
     // Finally, get all the authors of these tweets
     let user_ids: HashSet<UserId> = all_tweets.values().map(|tweet| tweet.author_id).collect();
+    let user_ids: Vec<UserId> = Vec::from_iter(user_ids);
 
-    todo!()
+    let mut request = redis::cmd("MGET");
+    let users: Vec<Option<OwnedCachedUser>> = match user_ids
+        .iter()
+        .map(|&user_id| schema::user_blob_key(user_id).to_string())
+        .fold(&mut request, |request, key| request.arg(key))
+        .query_async(conn)
+        .await?
+    {
+        redis::Value::Bulk(items) => items
+            .into_iter()
+            .map(|item| match item {
+                redis::Value::Nil => Ok(None),
+                redis::Value::Data(blob) => rmp_serde::from_slice(&blob)
+                    .map(Some)
+                    .map_err(Error::Decode),
+                _ => Err(Error::Redis(RedisError::from((
+                    RedisErrorKind::TypeError,
+                    "response type wasn't a blob",
+                )))),
+            })
+            .try_collect()?,
+        _ => {
+            return Err(Error::Redis(RedisError::from((
+                RedisErrorKind::TypeError,
+                "response type wasn't an array",
+            ))))
+        }
+    };
+
+    if user_ids.len() != users.len() {
+        todo!()
+    }
+
+    let all_users: HashMap<UserId, OwnedCachedUser> = user_ids
+        .iter()
+        .zip(users)
+        .filter_map(|(&user_id, user)| Some((user_id, user?)))
+        .collect();
+
+    Ok(ClusterData {
+        tweets: all_tweets,
+        users: all_users,
+    })
+}
+
+pub async fn get_user(
+    conn: &mut redis::aio::Connection,
+    user_id: UserId,
+) -> Result<Option<OwnedCachedUser>, Error> {
+    match redis::cmd("GET")
+        .arg(schema::user_blob_key(user_id).to_string())
+        .query_async(conn)
+        .await?
+    {
+        redis::Value::Nil => Ok(None),
+        redis::Value::Data(blob) => rmp_serde::from_slice(&blob)
+            .map(Some)
+            .map_err(Error::Decode),
+        _ => Err(Error::Redis(RedisError::from((
+            RedisErrorKind::TypeError,
+            "response type wasn't a blob",
+        )))),
+    }
 }

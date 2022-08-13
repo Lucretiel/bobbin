@@ -1,14 +1,11 @@
 use crate::{
     social_tags,
-    twitter::{
-        api::TweetId,
-        auth,
-        thread::{get_thread, Thread, ThreadAuthor},
-    },
+    thread::{build_thread, Thread, ThreadAuthor},
+    twitter::{api::TweetId, auth},
     views::base::base_template,
 };
 
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
 
 use horrorshow::{html, owned_html, prelude::*};
 use lazy_format::lazy_format;
@@ -102,7 +99,7 @@ fn render_thread(thread: Thread) -> impl Template {
         @if let Some(meta) = meta_details {
             :social_tags! {
                 m:description: &meta.description;
-                s:image: &meta.image_url;
+                s:image: meta.image_url.as_str();
             };
         }
     };
@@ -146,12 +143,20 @@ fn render_thread(thread: Thread) -> impl Template {
 
 pub async fn thread(
     http_client: reqwest::Client,
-    redis_client: Option<&redis::aio::Connection>,
+    redis_client: &mut redis::aio::Connection,
     token: impl auth::Token,
     tail: TweetId,
     head: Option<TweetId>,
 ) -> http::Response<hyper::Body> {
-    match get_thread(&http_client, &token, tail, head).await {
+    let thread = build_thread(&http_client, &token, redis_client, tail, head).await;
+    let thread_page = render_thread(thread).into_string().unwrap();
+    http::Response::builder()
+        .status(http::StatusCode::OK)
+        .header(http::header::CONTENT_TYPE, "text/html")
+        .body(hyper::Body::from(thread_page))
+        .unwrap()
+
+    /*  match get_thread(&http_client, &token, tail, head).await {
         Ok(thread) => {
             // TODO: Enumerate the failure mode here. It's not really documented
             // how this can fail, and I'm pretty sure it can't?
@@ -175,5 +180,5 @@ pub async fn thread(
                 .body(hyper::Body::from(page))
                 .unwrap()
         }
-    }
+    }*/
 }

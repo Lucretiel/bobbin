@@ -96,8 +96,8 @@ async fn run(args: Args) {
     // TODO: Check that static_dir exists
 
     // Pre-render the pages that never change.
-    let home = Bytes::from(views::home().into_string().unwrap());
-    let faq = Bytes::from(views::faq().into_string().unwrap());
+    let _home = Bytes::from(views::home().into_string().unwrap());
+    let _faq = Bytes::from(views::faq().into_string().unwrap());
 
     // TODO: caches, especially for static content
 
@@ -108,7 +108,7 @@ async fn run(args: Args) {
 
     // Create our redis client
     // TODO: Use bb8 connection pool.
-    let redis_client = args.redis.map(Arc::new);
+    let _redis_client = args.redis.map(Arc::new);
 
     // Get an auth token
     // TODO: Set up the handlers to refresh the token if necessary
@@ -119,42 +119,18 @@ async fn run(args: Args) {
 
     // TODO: Wrap this in an Arc? It's ~120 bytes, but copying that might be
     // cheaper than atomic operations?
-    let token = auth::generate_bearer_token(&http_client, &credentials)
+    let _token = auth::generate_bearer_token(&http_client, &credentials)
         .await
         .expect("Couldn't get a bearer token");
 
-    // Route: /
-    let root = warp::path::end().map(move || warp::reply::html(home.clone()));
-
-    // Route: /faq
-    let faq = warp::path!("faq").map(move || warp::reply::html(faq.clone()));
-
-    // Route: /thread/{thread_id}
-    let thread = warp::path!("thread" / TweetId).and_then(move |tweet_id| {
-        let http_client = http_client.clone();
-        let redis_client = redis_client.clone();
-        let token = token.clone();
-
-        views::thread(
-            http_client,
-            redis_client.map(|_client| todo!()),
-            token,
-            tweet_id,
-            None,
-        )
-        // and_then requires a Result
-        .map(infallible)
-    });
-
-    // Route: /static/...
-    let static_files = warp::path!("static" / ..).and(warp::fs::dir(args.static_dir));
-
-    let service = root.or(faq).or(thread).or(static_files);
-
-    warp::serve(service).run((args.bind, args.port)).await
+    // Routes:
+    //   /
+    //   /faq
+    //   /thread/{thread_id}
+    //   /static/..
+    todo!()
 }
 
-#[allow(unused_braces)]
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) {
