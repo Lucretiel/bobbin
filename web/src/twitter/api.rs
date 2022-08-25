@@ -118,7 +118,6 @@ pub struct ReplyInfo {
 
 #[derive(Debug, Clone)]
 pub struct Tweet {
-    pub id: TweetId,
     pub text: String,
     pub author: Rc<User>,
     pub reply: Option<ReplyInfo>,
@@ -126,24 +125,28 @@ pub struct Tweet {
 }
 
 impl Tweet {
-    fn from_raw_tweet(raw: RawTweet, user_table: &mut UserTable) -> Self {
-        Self {
-            id: raw.id,
-            reply: match (raw.reply_id, raw.reply_author_id) {
-                (None, None) => None,
-                (Some(id), Some(author)) => Some(ReplyInfo { id, author }),
-                // TODO: Log an error here (tracing) and return None instead of panic
-                _ => {
-                    panic!("invalid response from twitter API: had a reply author but no reply id")
-                }
+    fn from_raw_tweet(raw: RawTweet, user_table: &mut UserTable) -> (TweetId, Self) {
+        (
+            raw.id,
+            Self {
+                reply: match (raw.reply_id, raw.reply_author_id) {
+                    (None, None) => None,
+                    (Some(id), Some(author)) => Some(ReplyInfo { id, author }),
+                    // TODO: Log an error here (tracing) and return None instead of panic
+                    _ => {
+                        panic!(
+                            "invalid response from twitter API: had a reply author but no reply id"
+                        )
+                    }
+                },
+                author: user_table.dedup_item(raw.author.id, raw.author).clone(),
+                text: raw.text,
+                image_url: raw
+                    .entities
+                    .and_then(|e| e.media.into_iter().next())
+                    .map(|raw| raw.url),
             },
-            author: user_table.dedup_item(raw.author.id, raw.author).clone(),
-            text: raw.text,
-            image_url: raw
-                .entities
-                .and_then(|e| e.media.into_iter().next())
-                .map(|raw| raw.url),
-        }
+        )
     }
 }
 
@@ -221,7 +224,6 @@ pub async fn get_tweets(
             raw_tweets
                 .into_iter()
                 .map(|raw| Tweet::from_raw_tweet(raw, user_table))
-                .map(|tweet| (tweet.id, tweet))
                 .collect()
         }),
         Err(tasks) => {
@@ -231,7 +233,6 @@ pub async fn get_tweets(
                 .map_ok(|raw_tweets: Vec<RawTweet>| iter(raw_tweets).map(Ok))
                 .try_flatten()
                 .map_ok(|raw| Tweet::from_raw_tweet(raw, user_table))
-                .map_ok(|tweet| (tweet.id, tweet))
                 .try_collect()
                 .await
         }
@@ -264,7 +265,7 @@ pub async fn get_tweet(
         .error_for_status()?
         .json()
         .await
-        .map(|raw: RawTweet| Tweet::from_raw_tweet(raw, user_table))
+        .map(|raw: RawTweet| Tweet::from_raw_tweet(raw, user_table).1)
 }
 
 const USER_TIMELINE_URL: &str = "https://api.twitter.com/1.1/statuses/user_timeline";
@@ -276,7 +277,7 @@ pub async fn get_user_tweets(
     user_id: UserId,
     max_id: TweetId,
     user_table: &mut UserTable,
-) -> Result<Vec<Tweet>, reqwest::Error> {
+) -> Result<Vec<(TweetId, Tweet)>, reqwest::Error> {
     // TODO: check for certain kinds of recoverable errors (auth errors etc)
     client
         .get(USER_TIMELINE_URL)

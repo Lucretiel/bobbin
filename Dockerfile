@@ -2,7 +2,7 @@
 # (Or just delete the makefile and run in docker?)
 
 ############### RUST STUFF #################
-FROM rust:1.58-slim as web
+FROM rust:1.63-slim as web
 WORKDIR /bobbin-web
 
 # First, copy and build just our dependencies, with a dummy main. This way,
@@ -13,7 +13,7 @@ COPY ./docker/fake_main.rs ./src/main.rs
 RUN ["cargo", "build", "--release", "--locked"]
 
 # Now that dependencies are built, rebuild with the actual source. The previous
-# steps will be skipped if Cargo.toml and Cargo.lock didn't chage (which means
+# steps will be skipped if Cargo.toml and Cargo.lock didn't change (which means
 # our compiled dependencies will be reused)
 RUN rm target/*/deps/bobbin-*
 COPY ./web/src ./src

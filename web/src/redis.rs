@@ -20,10 +20,9 @@ User keys expire because users can change their profile pic etc
 // design that permeates this interface.
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     fmt::{self, Display, Formatter, Write as FmtWrite},
     hash::Hash,
-    iter,
 };
 
 use itertools::Itertools as _;
@@ -135,7 +134,7 @@ type BorrowedCachedTweet<'a> = CachedTweet<&'a str, &'a Url>;
 // TODO: tracing for redis errors
 pub async fn save_tweets(
     conn: &mut redis::aio::Connection,
-    tweets: impl IntoIterator<Item = &Tweet>,
+    tweets: impl IntoIterator<Item = (TweetId, &Tweet)>,
     cluster_id: ClusterId,
 ) -> Result<(), Error> {
     /*
@@ -173,10 +172,10 @@ pub async fn save_tweets(
     let mut user_table = HashMap::new();
 
     // TODO: confirm that these serialize calls are infallible.
-    tweets.into_iter().for_each(|tweet| {
+    tweets.into_iter().for_each(|(tweet_id, tweet)| {
         // PART 1: Add a SET command for this tweet
         key_buffer.clear();
-        write!(&mut key_buffer, "{}", schema::tweet_blob_key(tweet.id)).unwrap();
+        write!(&mut key_buffer, "{}", schema::tweet_blob_key(tweet_id)).unwrap();
 
         serialize_buffer.clear();
         rmp_serde::encode::write(
@@ -198,7 +197,7 @@ pub async fn save_tweets(
 
         // PART 2: Add this tweet to the cluster
         serialize_buffer.clear();
-        rmp_serde::encode::write(&mut serialize_buffer, &tweet.id).unwrap();
+        rmp_serde::encode::write(&mut serialize_buffer, &tweet_id).unwrap();
         cluster_add_cmd.arg(serialize_buffer.as_slice());
 
         // PART 3: Collect the user into the set
@@ -241,8 +240,10 @@ pub async fn save_tweets(
 
 #[derive(Debug, Clone, Default)]
 pub struct ClusterData {
-    pub tweets: HashMap<TweetId, OwnedCachedTweet>,
-    pub users: HashMap<UserId, OwnedCachedUser>,
+    // We store options here to indicate the successful discovery of the
+    // absence of data in Redis; this helps us avoid duplicate work
+    pub tweets: HashMap<TweetId, Option<OwnedCachedTweet>>,
+    pub users: HashMap<UserId, Option<OwnedCachedUser>>,
 }
 
 impl ClusterData {
@@ -294,7 +295,8 @@ impl ClusterData {
 pub async fn get_tweet_cluster(
     conn: &mut redis::aio::Connection,
     tweet_id: TweetId,
-) -> Result<ClusterData, Error> {
+    data: &mut ClusterData,
+) -> Result<(), Error> {
     // TODO: Improved error handling here. In general, errors in this function
     // should result in:
     // - Empty success result
@@ -304,16 +306,21 @@ pub async fn get_tweet_cluster(
     // Redis connection etc errors should result in some kind of retry, followed
     // by an error returned
 
-    // TODO: Provide some context to this function so it doesn't repeat work
-    // (don't need to fetch tweets for which we already have data)
-
     // Start by fetching this tweet
+    let entry = match data.tweets.entry(tweet_id) {
+        Entry::Occupied(_) => return Ok(()),
+        Entry::Vacant(entry) => entry,
+    };
+
     let tweet: OwnedCachedTweet = match redis::cmd("GET")
         .arg(schema::tweet_blob_key(tweet_id).to_string())
         .query_async(conn)
         .await?
     {
-        redis::Value::Nil => return Ok(ClusterData::new()),
+        redis::Value::Nil => {
+            entry.insert(None);
+            return Ok(());
+        }
         redis::Value::Data(blob) => rmp_serde::from_slice(&blob)?,
         _ => {
             return Err(Error::Redis(RedisError::from((
@@ -323,9 +330,13 @@ pub async fn get_tweet_cluster(
         }
     };
 
+    let cluster_id = tweet.cluster_id;
+    let user_id = tweet.author_id;
+    entry.insert(Some(tweet));
+
     // Next, get all the tweet IDs for the cluster
     let tweet_ids_in_cluster: Vec<TweetId> = match redis::cmd("SMEMBERS")
-        .arg(schema::cluster_key(tweet.cluster_id).to_string())
+        .arg(schema::cluster_key(cluster_id).to_string())
         .query_async(conn)
         .await?
     {
@@ -339,8 +350,8 @@ pub async fn get_tweet_cluster(
                     "response type wasn't a blob",
                 )))),
             })
-            // TODO: Filter tweets that the *caller* already knows about
-            .filter_ok(|id: &TweetId| *id != tweet_id)
+            // Exclude tweet IDs we already know things about
+            .filter_ok(|id: &TweetId| !(data.tweets.contains_key(id) || *id == tweet_id))
             .try_collect()?,
         _ => {
             return Err(Error::Redis(RedisError::from((
@@ -388,15 +399,17 @@ pub async fn get_tweet_cluster(
         todo!()
     }
 
-    let all_tweets: HashMap<TweetId, OwnedCachedTweet> = tweet_ids_in_cluster
+    let user_ids: HashSet<UserId> = tweets
         .iter()
-        .zip(tweets)
-        .filter_map(|(&tweet, maybe_tweet)| Some((tweet_id, maybe_tweet?)))
-        .chain(iter::once((tweet_id, tweet)))
+        .filter_map(|tweet| Some(tweet.as_ref()?.author_id))
+        .chain([user_id])
+        .filter(|user_id| !data.users.contains_key(user_id))
         .collect();
 
+    data.tweets
+        .extend(tweet_ids_in_cluster.into_iter().zip(tweets));
+
     // Finally, get all the authors of these tweets
-    let user_ids: HashSet<UserId> = all_tweets.values().map(|tweet| tweet.author_id).collect();
     let user_ids: Vec<UserId> = Vec::from_iter(user_ids);
 
     let mut request = redis::cmd("MGET");
@@ -432,16 +445,9 @@ pub async fn get_tweet_cluster(
         todo!()
     }
 
-    let all_users: HashMap<UserId, OwnedCachedUser> = user_ids
-        .iter()
-        .zip(users)
-        .filter_map(|(&user_id, user)| Some((user_id, user?)))
-        .collect();
+    data.users.extend(user_ids.into_iter().zip(users));
 
-    Ok(ClusterData {
-        tweets: all_tweets,
-        users: all_users,
-    })
+    Ok(())
 }
 
 pub async fn get_user(

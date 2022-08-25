@@ -44,53 +44,23 @@ pub struct Thread {
     pub meta: Option<Meta>,
 }
 
-#[derive(Debug, Clone)]
 enum TweetLookupResult {
-    // We found the tweet
-    FoundTweet(Tweet),
+    // We found the tweet in the twitter API; this is the best case
+    ApiFound(Tweet),
 
-    // We weren't able to find a tweet with this ID
-    MissingTweet(TweetId),
+    // The API told us that the tweet doesn't exist. Maybe it was deleted,
+    // account went private, whatever.
+    ApiGone,
 
-    // We were only ever to fetch some of the tweet.
-    PartiallyMissingTweet {
-        tweet_id: TweetId,
-        reply: Option<ReplyInfo>,
-    },
-}
+    // We found tweet and its author in Redis. A good result, but overwrite it
+    // from the API if we happen to get information about it from the API.
+    RedisFound(Tweet),
 
-impl TweetLookupResult {
-    #[inline]
-    #[must_use]
-    fn tweet(&self) -> Option<&Tweet> {
-        match *self {
-            Self::FoundTweet(ref tweet) => Some(tweet),
-            Self::MissingTweet(..) | Self::PartiallyMissingTweet { .. } => None,
-        }
-    }
+    // We found the tweet in Redis, but not its author
+    RedisPartial(OwnedCachedTweet),
 
-    #[inline]
-    #[must_use]
-    fn tweet_id(&self) -> TweetId {
-        match *self {
-            TweetLookupResult::FoundTweet(ref tweet) => tweet.id,
-            TweetLookupResult::MissingTweet(id) => id,
-            TweetLookupResult::PartiallyMissingTweet { tweet_id, .. } => tweet_id,
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    fn previous_tweet_id(&self) -> Option<TweetId> {
-        match *self {
-            TweetLookupResult::MissingTweet(..) => None,
-
-            TweetLookupResult::FoundTweet(Tweet { ref reply, .. })
-            | TweetLookupResult::PartiallyMissingTweet { ref reply, .. } => {
-                reply.as_ref().map(|reply| reply.id)
-            }
-        }
-    }
+    // The tweet wasn't in Redis.
+    RedisGone,
 }
 
 // TODO: attach much more context to these errors (or use anyhow)
@@ -156,6 +126,42 @@ pub async fn build_thread(
         current_tweet_id = entry.previous_tweet_id();
         thread_items.push(entry);
     }
+
+    let thread_author = thread_author(
+        thread_items
+            .iter()
+            .filter_map(|item| item.tweet())
+            .map(|tweet| &tweet.author),
+    );
+
+    // Apply meta stuff.
+    // - The description is the content of the first tweet
+    // - The image is the image in the first tweet, or if there is none, the
+    //   author's image, or if there's no author, the image of the first person
+    //   in the conversation
+    let meta = thread_items
+        .iter()
+        .rev()
+        .find_map(|item| match *item {
+            TweetLookupResult::FoundTweet(ref tweet) => Some(tweet),
+            _ => None,
+        })
+        .map(|tweet| {
+            let description = tweet.text.clone();
+            let image_url = match tweet.image_url {
+                Some(ref url) => url,
+                None => match author {
+                    ThreadAuthor::Author(ref thread_author) => &thread_author.image_url,
+                    ThreadAuthor::Conversation => &tweet.author.image_url,
+                },
+            }
+            .clone();
+
+            Meta {
+                description,
+                image_url,
+            }
+        });
 
     todo!()
 }
@@ -382,34 +388,3 @@ fn thread_author<'a>(authors: impl IntoIterator<Item = &'a Rc<User>>) -> ThreadA
         },
     }
 }
-
-/*
-   // Apply meta stuff.
-   // - The description is the content of the first tweet
-   // - The image is the image in the first tweet, or if there is none, the
-   //   author's image, or if there's no author, the image of the first person
-   //   in the conversation
-   let meta = thread_items
-       .iter()
-       .rev()
-       .find_map(|item| match *item {
-           TweetLookupResult::FoundTweet(ref tweet) => Some(tweet),
-           _ => None,
-       })
-       .map(|tweet| {
-           let description = tweet.text.clone();
-           let image_url = match tweet.image_url {
-               Some(ref url) => url,
-               None => match author {
-                   ThreadAuthor::Author(ref thread_author) => &thread_author.image_url,
-                   ThreadAuthor::Conversation => &tweet.author.image_url,
-               },
-           }
-           .clone();
-
-           Meta {
-               description,
-               image_url,
-           }
-       });
-*/
